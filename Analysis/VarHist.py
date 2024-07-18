@@ -12,7 +12,7 @@ import ROOT
 from ROOT import TFile, TH1F, TCanvas
  
 # Input path
-dir = "~/Data/" # Diogo
+dir = "~/LocalRep/Data/" # Diogo
 # dir = "/user/u/u24gmarujo/root_folder/" #Gonçalo
 data_file = "B0ToKstMuMu_JpsiMC_22F_0-1531_miniaod.root"
  
@@ -90,50 +90,53 @@ for i in range(tree.GetEntries()):
     for value1, value2 in zip(bDCABS, bDCABSE):
         if value2 != 0:       
             h_sbDCABS.Fill(value1/value2)
-            
+        
+    print(f"Entry # = {i} - (DCA of Kst+/Error)")
+    
     for value1, value2 in zip(kstTrkpDCABS, kstTrkpDCABSE):
         if value2 != 0:       
-            h_skstTrkpDCABS.Fill(value1/value2)
+            h_skstTrkpDCABS.Fill(abs(value1/value2))
+            print(f"({value1}/{value2})")
             
     for value1, value2 in zip(kstTrkmDCABS, kstTrkmDCABSE):
         if value2 != 0:       
             h_skstTrkmDCABS.Fill(value1/value2)
             
-def hist_to_pdf(hist, file_name):
-    canvas = TCanvas()
-    hist.Draw()
-    canvas.SaveAs(file_name)
-    canvas.Close()
-
-# Save histograms to separate PDF files
-hist_to_pdf(h_bMass, "h_bMass.pdf")
-hist_to_pdf(h_bBarMass, "h_bBarMass.pdf")
-hist_to_pdf(h_kstMass, "h_kstMass.pdf")
-hist_to_pdf(h_kstBarMass, "h_kstBarMass.pdf")
-hist_to_pdf(h_mumuMass, "h_mumuMass.pdf")
-hist_to_pdf(h_bCosAlphaBS, "h_bCosAlphaBS.pdf")
-hist_to_pdf(h_bVtxCL, "h_bVtxCL.pdf")
-hist_to_pdf(h_sbLBS, "h_sbLBS.pdf")
-hist_to_pdf(h_sbDCABS, "h_sbDCABS.pdf")
-hist_to_pdf(h_skstTrkpDCABS, "h_skstTrkpDCABS.pdf")
-hist_to_pdf(h_skstTrkmDCABS, "h_skstTrkmDCABS.pdf")
-
-# Save histograms to a new ROOT file
-output_file = TFile("VariabHist.root", "RECREATE")
-
-h_bMass.Write()
-h_bBarMass.Write()
-h_kstMass.Write()
-h_kstBarMass.Write()
-h_mumuMass.Write()
-h_bCosAlphaBS.Write()
-h_bVtxCL.Write()
-h_sbLBS.Write()
-h_sbDCABS.Write()
-h_skstTrkpDCABS.Write()
-h_skstTrkmDCABS.Write()
-
-output_file.Close()
-
+# def hist_to_pdf(hist, file_name):
+#     canvas = TCanvas()
+#     hist.Draw()
+#     canvas.SaveAs(file_name)
+#     canvas.Close()
+# 
+# # Save histograms to separate PDF files
+# hist_to_pdf(h_bMass, "h_bMass.pdf")
+# hist_to_pdf(h_bBarMass, "h_bBarMass.pdf")
+# hist_to_pdf(h_kstMass, "h_kstMass.pdf")
+# hist_to_pdf(h_kstBarMass, "h_kstBarMass.pdf")
+# hist_to_pdf(h_mumuMass, "h_mumuMass.pdf")
+# hist_to_pdf(h_bCosAlphaBS, "h_bCosAlphaBS.pdf")
+# hist_to_pdf(h_bVtxCL, "h_bVtxCL.pdf")
+# hist_to_pdf(h_sbLBS, "h_sbLBS.pdf")
+# hist_to_pdf(h_sbDCABS, "h_sbDCABS.pdf")
+# hist_to_pdf(h_skstTrkpDCABS, "h_skstTrkpDCABS.pdf")
+# hist_to_pdf(h_skstTrkmDCABS, "h_skstTrkmDCABS.pdf")
+# 
+# # Save histograms to a new ROOT file
+# output_file = TFile("VariabHist.root", "RECREATE")
+# 
+# h_bMass.Write()
+# h_bBarMass.Write()
+# h_kstMass.Write()
+# h_kstBarMass.Write()
+# h_mumuMass.Write()
+# h_bCosAlphaBS.Write()
+# h_bVtxCL.Write()
+# h_sbLBS.Write()
+# h_sbDCABS.Write()
+# h_skstTrkpDCABS.Write()
+# h_skstTrkmDCABS.Write()
+# 
+# output_file.Close()
+# 
 # Close the input ROOT file
 root_file.Close()
