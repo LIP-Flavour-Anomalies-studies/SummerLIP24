@@ -153,6 +153,9 @@ def plot_hist(hist1, hist2, file_name, title):
     # Draw histograms on the main canvas
     hist1.Draw("HIST")
     hist2.Draw("HIST SAME")
+
+    hist1.SetStats(0)
+    hist2.SetStats(0)
     
     # Calculate statistics for hist1
     entries1 = hist1.GetEntries()
@@ -165,7 +168,7 @@ def plot_hist(hist1, hist2, file_name, title):
     stddev2 = hist2.GetStdDev()
     
     # Create custom statistics box for hist1
-    stats1 = ROOT.TPaveText(0.7, 0.8, 0.9, 0.9, "NDC")
+    stats1 = ROOT.TPaveText(0.6, 0.9, 0.8, 1.0, "NDC")
     stats1.SetBorderSize(1)
     stats1.SetTextColor(ROOT.kRed)
     stats1.AddText(f"Monte Carlo: Entries = {entries1:.0f}")
@@ -174,7 +177,7 @@ def plot_hist(hist1, hist2, file_name, title):
     stats1.Draw()
     
     # Create custom statistics box for hist2
-    stats2 = ROOT.TPaveText(0.7, 0.6, 0.9, 0.7, "NDC")
+    stats2 = ROOT.TPaveText(0.8, 0.9, 1.0, 1.0, "NDC")
     stats2.SetBorderSize(1)
     stats2.SetTextColor(ROOT.kBlue)
     stats2.AddText(f"Real Data: Entries = {entries2:.0f}")
@@ -183,7 +186,7 @@ def plot_hist(hist1, hist2, file_name, title):
     stats2.Draw()
     
     # Create a legend and add entries with statistics
-    legend = ROOT.TLegend(0.5, 0.8, 0.7, 0.9)  # Adjusted to not overlap with stats boxes
+    legend = ROOT.TLegend(0.8, 0.2, 1.0, 0.3)  # Adjusted to not overlap with stats boxes
     legend.AddEntry(hist1, "Monte Carlo", "l")
     legend.AddEntry(hist2, "Real Data", "l")
     legend.Draw()
