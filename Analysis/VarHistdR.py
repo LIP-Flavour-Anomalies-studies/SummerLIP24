@@ -85,8 +85,6 @@ def calc_dR(m, particle, gparticle, tree):
 
     return dR_list
 
-
-
 # Function to fill histograms from a tree
 def fill_hist(tree, histograms):
 
