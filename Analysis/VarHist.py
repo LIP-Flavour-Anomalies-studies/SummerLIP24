@@ -13,7 +13,7 @@ from ROOT import TFile, TH1F, TCanvas
  
 # Input path
 dir = "~/LocalRep/Data/" # Diogo
-# dir = "/user/u/u24gmarujo/root_folder/" #Gonçalo
+# dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo
 data_file = "B0ToKstMuMu_JpsiMC_22F_0-1531_miniaod.root"
  
 # Opening data ROOT file
