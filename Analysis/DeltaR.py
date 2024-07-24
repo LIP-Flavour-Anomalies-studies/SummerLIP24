@@ -35,6 +35,8 @@ hist_bdR = TH1F("h_bdR", "B Delta R", 60, 0, 0.01)
 hist_kstdR = TH1F("h_kstdR", "K* Delta R", 100, 0, 0.02)
 hist_mumdR = TH1F("h_mumdR", "mum Delta R", 100, 0, 0.004)
 hist_mupdR = TH1F("h_mupdR", "mup Delta R", 100, 0, 0.004)
+hist_kstTrkpdR = TH1F("h_kstTrkpdR", "Track+ Delta R", 100, 0, 0.02)
+hist_kstTrkmdR = TH1F("h_kstTrkmdR", "Track- Delta R", 100, 0, 0.02)
     
 def create_TLvector(m, Px, Py, Pz):
 
@@ -77,7 +79,9 @@ fill_hist_dR(5.278, "b", "genB0", tree1, hist_bdR)
 fill_hist_dR(0.892, "kst", "genKst", tree1, hist_kstdR)
 fill_hist_dR(0.105, "mum", "genMum", tree1, hist_mumdR)
 fill_hist_dR(0.105, "mup", "genMup", tree1, hist_mupdR)
-        
+fill_hist_dR(0.0, "kstTrkp", "genKstTrkp", tree1, hist_kstTrkpdR)        
+fill_hist_dR(0.0, "kstTrkm", "genKstTrkm", tree1, hist_kstTrkmdR)
+
 # Function to plot two histograms on the same canvas and save as .pdf
 def plot_hist(hist, file_name, title):
     canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
@@ -98,6 +102,8 @@ plot_hist(hist_bdR, "h_bdR.pdf", "B Delta R")
 plot_hist(hist_kstdR, "h_kstdR.pdf", "K* Delta R")
 plot_hist(hist_mumdR, "h_mumdR.pdf", "mum Delta R")
 plot_hist(hist_mupdR, "h_mupdR.pdf", "mup Delta R")
+plot_hist(hist_kstTrkpdR, "h_kstTrkpdR.pdf", "Track+ Delta R")
+plot_hist(hist_kstTrkmdR, "h_kstTrkmdR.pdf", "Track- Delta R")
 
 # Save histograms to a new .root file
 output_file = TFile("DeltaR.root", "RECREATE")
@@ -106,6 +112,8 @@ hist_bdR.Write()
 hist_kstdR.Write()
 hist_mumdR.Write()
 hist_mupdR.Write()
+hist_kstTrkpdR.Write()
+hist_kstTrkmdR.Write()
       
 # for key, hist in hist2.items():
 #    hist.Write()
