@@ -17,6 +17,9 @@ dir = "~/Data/" # Diogo
 #dir = "/user/u/u24gmarujo/root_folder/" #Gonçalo
 data_file1 = "B0ToKstMuMu_JpsiMC_22F_0-1531_miniaod.root"
 
+# Avoids unnecessary plotting of canvases during running
+ROOT.gROOT.SetBatch(True)
+
 # Open .root files
 root_file1 = TFile.Open(dir + data_file1)
 
@@ -37,7 +40,7 @@ hist1 = {
     "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 11),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS1", "B CosAlphaBS", 100, -1.0, 1.0),
     "h_bVtxCL": TH1F("h_bVtxCL1", "B VtxCL", 40, 0, 1.0),
-    "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 40, 0, 20),
+    "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 40, 0, 100),
     "h_bDCABSs": TH1F("h_bDCABSs1", "Significance B DCABS", 100, -20, 20),
     "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs1", "Significance K* TrkpDCABS", 40, -10, 10),
     "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs1", "Significance K* TrkmDCABS", 40, -10, 10),
@@ -167,9 +170,6 @@ def plot_hist(hist1, file_name, title):
     legend = ROOT.TLegend(0.8, 0.2, 1.0, 0.3)  # Adjusted to not overlap with stats boxes
     legend.AddEntry(hist1, "Monte Carlo", "l")
     legend.Draw()
-    
-    # Update the main canvas to reflect changes
-    canvas.Update()
     
     # Save the canvas to a file
     canvas.SaveAs(file_name)
