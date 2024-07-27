@@ -14,7 +14,7 @@ import numpy as np
 
 # Input path
 dir = "~/Data/" # Diogo
-#dir = "/user/u/u24gmarujo/root_folder/" #Gonçalo
+#dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo
 data_file1 = "B0ToKstMuMu_JpsiMC_22F_0-1531_miniaod.root"
 
 # Avoids unnecessary plotting of canvases during running
@@ -87,8 +87,6 @@ def calc_dR(m, particle, gparticle, tree):
         dR_list.append(entry_dR_list)
 
     return dR_list
-
-
 
 # Function to fill histograms from a tree
 def fill_hist(tree, histograms):
