@@ -13,10 +13,12 @@ from ROOT import TFile, TH1F, TCanvas, TLegend, TLorentzVector
 import numpy as np
 
 # Input path
-dir = "~/Data/" # Diogo
-#dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo
+dir = "/lstore/cms/boletti/Run3-ntuples/"
 data_file1 = "B0ToKstMuMu_JpsiMC_22F_0-1531_miniaod.root"
 data_file2 = "B0ToKstMuMu_22F_0-812_miniaod.root"
+
+# Avoid unnecessary plots during runtime
+ROOT.gROOT.SetBatch(True)
 
 # Open .root files
 root_file1 = TFile.Open(dir + data_file1)
@@ -66,79 +68,68 @@ hist2 = {
     "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs2", "Significance K* TrkmDCABS", 40, -10, 10),
 }
 
-def TLvector(m, particle, tree):
-    lv_list = []
+# Function that initializes a Lorentzvector
+def TLvector(m, Px, Py, Pz):
+
+    # Create and set the TLorentzVector for the candidate
+    lv = TLorentzVector()
+    P = np.sqrt(Px**2 + Py**2 + Pz**2)
+    E = np.sqrt(P**2 + m**2) 
+    lv.SetPxPyPzE(Px, Py, Pz, E)
+    
+    return lv
+    
+def Pxyz(particle, tree, i):
+
+    P = []
+    tree.GetEntry(i)
+    
+    # Retrieve the momentum components for the particle candidates
+    Px = getattr(tree, particle + "Px")
+    Py = getattr(tree, particle + "Py")
+    Pz = getattr(tree, particle + "Pz")
+   
+    P.append(Px)
+    P.append(Py)
+    P.append(Pz)
+    
+    return P
+    
+def flavour_tag(Pm, Pp, j, genSignal):
+
+    # Create TLorentzVectors for both hypotheses
+    lvm1 = TLvector(0.140, Pm[0][j], Pm[1][j], Pm[2][j])  # π-
+    lvp1 = TLvector(0.494, Pp[0][j], Pp[1][j], Pp[2][j])  # K+
+
+    lvm2 = TLvector(0.494, Pm[0][j], Pm[1][j], Pm[2][j])  # K-
+    lvp2 = TLvector(0.140, Pp[0][j], Pp[1][j], Pp[2][j])  # π+
+    
+    # Calculate invariant masses for each candidate pair
+    m1 = (lvm1 + lvp1).M()
+    m2 = (lvm2 + lvp2).M()
+#    print(f"(m1, m2) -> ({m1}, {m2})")
+    
+    # Determine the flavour tag based on proximity to the K* mass (0.896 GeV/c²)
+    if abs(m1 - 0.896) < abs(m2 - 0.896):
+        fl_tag = 1  # K*
+#        if genSignal == 2:
+ #           print(f"K* mass error -> {abs(m1-0.896)}")
+    else:
+        fl_tag = 2  # K* Bar
+#        if genSignal == 1:
+#            print(f"K* Bar mass error -> {abs(m2-0.896)}")
+
+        
+    return fl_tag
+    
+    
+# Function to fill histograms from a tree
+def fill_hist(tree, histograms, Data):
 
     for i in range(tree.GetEntries()):
         tree.GetEntry(i)
         
-        # Retrieve the momentum components for the particle candidates
-        Px = getattr(tree, particle + "Px")
-        Py = getattr(tree, particle + "Py")
-        Pz = getattr(tree, particle + "Pz")
-        
-        # Create a list to store TLorentzVector objects for all candidates in the current event
-        event_lv = []
-        
-        # Loop over each candidate in the event
-        for j in range(len(Px)):
-           lv = TLorentzVector()
-           P = np.sqrt(Px[j]**2 + Py[j]**2 + Pz[j]**2)
-           E = np.sqrt(P**2 + m**2) 
-           lv.SetPxPyPzE(Px[j], Py[j], Pz[j], E)
-           event_lv.append(lv)
-        
-        # Append the list of vectors for this event to the main list
-        lv_list.append(event_lv)
-
-    return lv_list
-
-def flavour_tag(tree):
-    fl_tag = []
-    m1_list = []
-    m2_list = []
-
-    # Retrieve TLorentzVector objects for all events for both hypotheses
-    lvm1 = TLvector(0.140, "kstTrkm", tree)  # π-
-    lvp1 = TLvector(0.494, "kstTrkp", tree)  # K+
-    lvm2 = TLvector(0.494, "kstTrkm", tree)  # K-
-    lvp2 = TLvector(0.140, "kstTrkp", tree)  # π+
-    
-    # Loop over each entry in the tree
-    for i in range(tree.GetEntries()):
-        event_fl_tag = []
-        event_m1 = []
-        event_m2 = []
-
-        # Calculate invariant masses for each candidate pair in the current event
-        for j in range(len(lvm1[i])):  # We'll assume all particles have the same number of candidates...
-            m1 = (lvm1[i][j] + lvp1[i][j]).M()
-            m2 = (lvm2[i][j] + lvp2[i][j]).M()
-            
-            event_m1.append(m1)
-            event_m2.append(m2)
-            
-            # Determine the flavour tag based on proximity to the K* mass (0.896 GeV/c²)
-            if abs(m1 - 0.896) < abs(m2 - 0.896):
-                event_fl_tag.append(1)  # K*
-            else:
-                event_fl_tag.append(2)  # K* Bar
-        
-        # Store the results for the current event
-        m1_list.append(event_m1)
-        m2_list.append(event_m2)
-        fl_tag.append(event_fl_tag)
-
-    return m1_list, m2_list, fl_tag
-          
-# Function to fill histograms (MC) from a tree
-def fill_histMC(tree, histograms):
-
-    fl_tag = flavour_tag(tree)
-    
-    for i in range(tree.GetEntries()):
-        tree.GetEntry(i)
-        
+        # Retrieve variables of interest
         mumuMass = getattr(tree, "mumuMass")
         bCosAlphaBS = getattr(tree, "bCosAlphaBS")
         bVtxCL = getattr(tree, "bVtxCL")
@@ -150,25 +141,44 @@ def fill_histMC(tree, histograms):
         kstTrkpDCABSE = getattr(tree, "kstTrkpDCABSE")
         kstTrkmDCABS = getattr(tree, "kstTrkmDCABS")
         kstTrkmDCABSE = getattr(tree, "kstTrkmDCABSE")
+        genSignal = getattr(tree, "genSignal")
         bMass = getattr(tree, "bMass")
         kstMass = getattr(tree, "kstMass")
         bBarMass = getattr(tree, "bBarMass")
         kstBarMass = getattr(tree, "kstBarMass")
-        truthMatchMum = getattr(tree, "truthMatchMum")
-        truthMatchMup = getattr(tree, "truthMatchMup")
-        truthMatchTrkm = getattr(tree, "truthMatchTrkm")
-        truthMatchTrkp = getattr(tree, "truthMatchTrkp")
+        tMum = getattr(tree, "truthMatchMum")
+        tMup = getattr(tree, "truthMatchMup")
+        tTrkm = getattr(tree, "truthMatchTrkm")
+        tTrkp = getattr(tree, "truthMatchTrkp")
         
-        for j, (tMum, tMup, tTrkm, tTrkp) in enumerate(zip(truthMatchMum, truthMatchMup, truthMatchTrkm, truthMatchTrkp)):
-        
-            if tMum and tMup and tTrkm and tTrkp:
+        # Retrieve the momentum components for the track candidates
+        Pm = Pxyz("kstTrkm", tree, i) 
+        Pp = Pxyz("kstTrkp", tree, i)  
 
-                if fl_tag[i][j] == 1:
+        # Loop over each candidate in the event
+        for j in range(len(Pm[0])):
+        
+            fl_tag = flavour_tag(Pm, Pp, j, genSignal)
+            tmatch = True
+ 
+#            if not Data:
+#                tmatch = (tMum[j] and tMup[j] and tTrkm[j] and tTrkp[j])
+
+            if tmatch:
+                                
+                if fl_tag == 1:
                     histograms["h_bTMass"].Fill(bMass[j])
                     histograms["h_kstTMass"].Fill(kstMass[j])
-                elif fl_tag[i][j] == 2:
+#                    if not Data:
+#                        if genSignal != 1:
+#                            print(f"Event {i}, Candidate {j} -> No gensignal Match!.")
+                elif fl_tag == 2:
                     histograms["h_bTMass"].Fill(bBarMass[j])
                     histograms["h_kstTMass"].Fill(kstBarMass[j])
+#                    if not Data:
+#                        if genSignal != 2:
+#                            print(f"Event {i}, Candidate {j} -> No gensignal Match!.")
+
 
                 histograms["h_mumuMass"].Fill(mumuMass[j])
                 histograms["h_bCosAlphaBS"].Fill(bCosAlphaBS[j])
@@ -185,66 +195,19 @@ def fill_histMC(tree, histograms):
 
                 if kstTrkmDCABSE != 0:
                     histograms["h_kstTrkmDCABSs"].Fill(kstTrkmDCABS[j] / kstTrkmDCABSE[j])
-
-# Function to fill histograms (Data) from a tree
-def fill_histD(tree, histograms):
-
-    fl_tag = flavour_tag(tree)
-    
-    for i in range(tree.GetEntries()):
-        tree.GetEntry(i)
-        
-        mumuMass = getattr(tree, "mumuMass")
-        bCosAlphaBS = getattr(tree, "bCosAlphaBS")
-        bVtxCL = getattr(tree, "bVtxCL")
-        bLBS = getattr(tree, "bLBS")
-        bLBSE = getattr(tree, "bLBSE")
-        bDCABS = getattr(tree, "bDCABS")
-        bDCABSE = getattr(tree, "bDCABSE")
-        kstTrkpDCABS = getattr(tree, "kstTrkpDCABS")
-        kstTrkpDCABSE = getattr(tree, "kstTrkpDCABSE")
-        kstTrkmDCABS = getattr(tree, "kstTrkmDCABS")
-        kstTrkmDCABSE = getattr(tree, "kstTrkmDCABSE")
-        bMass = getattr(tree, "bMass")
-        kstMass = getattr(tree, "kstMass")
-        bBarMass = getattr(tree, "bBarMass")
-        kstBarMass = getattr(tree, "kstBarMass")
-        
-        for j in range(fl_tag[i]):
-
-            if fl_tag[i][j] == 1:
-                histograms["h_bTMass"].Fill(bMass[j])
-                histograms["h_kstTMass"].Fill(kstMass[j])
-            elif fl_tag[i][j] == 2:
-                histograms["h_bTMass"].Fill(bBarMass[j])
-                histograms["h_kstTMass"].Fill(kstBarMass[j])
-
-            histograms["h_mumuMass"].Fill(mumuMass[j])
-            histograms["h_bCosAlphaBS"].Fill(bCosAlphaBS[j])
-            histograms["h_bVtxCL"].Fill(bVtxCL[j])
-
-            if bLBSE[j] != 0:
-                histograms["h_bLBSs"].Fill(bLBS[j] / bLBSE[j])
-
-            if bDCABSE != 0:
-                histograms["h_bDCABSs"].Fill(bDCABS[j] / bDCABSE[j])
-
-            if kstTrkpDCABSE != 0:          
-                histograms["h_kstTrkpDCABSs"].Fill(kstTrkpDCABS[j] / kstTrkpDCABSE[j])
-
-            if kstTrkmDCABSE != 0:
-                histograms["h_kstTrkmDCABSs"].Fill(kstTrkmDCABS[j] / kstTrkmDCABSE[j])
                 
 # Fill histograms for both trees
-fill_histMC(tree1, hist1)
-fill_histD(tree2, hist2)
+fill_hist(tree1, hist1, False)
+fill_hist(tree2, hist2, True)
            
 # Normalize the Histograms
 for key, hist in hist1.items():
-    hist.Scale(1./hist.GetMaximum())
+    if hist.GetMaximum() != 0:    
+        hist.Scale(1./hist.GetMaximum())
  
 for key, hist in hist2.items():
-    hist.Scale(1./hist.GetMaximum())
+    if hist.GetMaximum() != 0:
+        hist.Scale(1./hist.GetMaximum())
            
 # Function to plot two histograms on the same canvas and save as .pdf
 def plot_hist(hist1, hist2, file_name, title):
@@ -298,9 +261,6 @@ def plot_hist(hist1, hist2, file_name, title):
     legend.AddEntry(hist1, "Monte Carlo", "l")
     legend.AddEntry(hist2, "Real Data", "l")
     legend.Draw()
-    
-    # Update the main canvas to reflect changes
-    canvas.Update()
     
     # Save the canvas to a file
     canvas.SaveAs(file_name)
