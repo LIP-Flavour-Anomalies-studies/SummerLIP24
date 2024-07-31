@@ -12,8 +12,8 @@ import ROOT
 from ROOT import TFile, TH1F, TCanvas, TLegend
 
 # Input path
-dir = "~/LocalRep/Data/" # Diogo
-#dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo
+#dir = "~/LocalRep/Data/" # Diogo
+dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo
 data_file1 = "B0ToKstMuMu_JpsiMC_22F_0-1531_miniaod.root"
 data_file2 = "B0ToKstMuMu_22F_0-812_miniaod.root"
 
@@ -49,7 +49,7 @@ hist1 = {
     "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 11),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS1", "B CosAlphaBS", 100, -1.0, 1.0),
     "h_bVtxCL": TH1F("h_bVtxCL1", "B VtxCL", 100, 0, 1.0),
-    "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 100, 0, 20),
+    "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 100, 0, 100),
     "h_bDCABSs": TH1F("h_bDCABSs1", "Significance B DCABS", 100, 0, 20),
     "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs1", "Significance K* TrkpDCABS", 100, 0, 10),
     "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs1", "Significance K* TrkmDCABS", 100, 0, 10),
@@ -180,7 +180,7 @@ def plot_hist(hist1, hist2, file_name, title):
     stats2 = ROOT.TPaveText(0.8, 0.9, 1.0, 1.0, "NDC")
     stats2.SetBorderSize(1)
     stats2.SetTextColor(ROOT.kBlue)
-    stats2.AddText(f"Real Data: Entries = {entries2:.0f}")
+    stats2.AddText(f"Data: Entries = {entries2:.0f}")
     stats2.AddText(f"Mean = {mean2:.3f}")
     stats2.AddText(f"Std Dev = {stddev2:.3f}")
     stats2.Draw()
@@ -188,7 +188,7 @@ def plot_hist(hist1, hist2, file_name, title):
     # Create a legend and add entries with statistics
     legend = ROOT.TLegend(0.8, 0.2, 1.0, 0.3)  # Adjusted to not overlap with stats boxes
     legend.AddEntry(hist1, "Monte Carlo", "l")
-    legend.AddEntry(hist2, "Real Data", "l")
+    legend.AddEntry(hist2, "Data", "l")
     legend.Draw()
     
     # Update the main canvas to reflect changes
