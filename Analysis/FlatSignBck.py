@@ -45,33 +45,31 @@ if not tree2:
     
 # Create histograms for each parameter
 hist1 = {
-    "h_bTMass": TH1F("h_bTMass1", "B Mass", 100, 4.5, 6.0),
+    "h_bTMass": TH1F("h_bTMass1", "B Mass", 60, 5.0, 5.6),
     "h_kstTMass": TH1F("h_kstTMass1", "K* Mass", 100, 0, 3),
     "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 11),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS1", "B CosAlphaBS", 100, -1.0, 1.0),
-    "h_bVtxCL": TH1F("h_bVtxCL1", "B VtxCL", 40, 0, 1.0),
+    "h_bVtxCL": TH1F("h_bVtxCL1", "B VtxCL", 50, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 40, 0, 100),
     "h_bDCABSs": TH1F("h_bDCABSs1", "Significance B DCABS", 100, -20, 20),
-    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs1", "Significance K* TrkpDCABS", 40, -10, 10),
-    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs1", "Significance K* TrkmDCABS", 40, -10, 10),
+    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs1", "Significance K* TrkpDCABS", 60, -10, 10),
+    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs1", "Significance K* TrkmDCABS", 60, -10, 10),
     "h_leadingPt": TH1F("h_leadingPt1", "Leading Pt", 100, 0, 40),
     "h_trailingPt": TH1F("h_trailingPt1", "Trailing Pt", 100, 0, 40),
-    "h_sign_bckg": TH1F("h_sign_bckg1", "Pure signal and background samples (B-candidate Mass)", 200, 5.0, 5.6),
 }
 
 hist2 = {
-    "h_bTMass": TH1F("h_bTMass2", "B Mass", 100, 4.5, 6.0),
+    "h_bTMass": TH1F("h_bTMass2", "B Mass", 60, 5.0, 5.6),
     "h_kstTMass": TH1F("h_kstTMass2", "K* Mass", 100, 0, 3),
     "h_mumuMass": TH1F("h_mumuMass2", "MuMu Mass", 100, 0.8, 11),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS2", "B CosAlphaBS", 100, -1.0, 1.0),
-    "h_bVtxCL": TH1F("h_bVtxCL2", "B VtxCL", 40, 0, 1.0),
+    "h_bVtxCL": TH1F("h_bVtxCL2", "B VtxCL", 50, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs2", "Significance B LBS", 40, 0, 100),
     "h_bDCABSs": TH1F("h_bDCABSs2", "Significance B DCABS", 100, -20, 20),
-    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs2", "Significance K* TrkpDCABS", 40, -10, 10),
-    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs2", "Significance K* TrkmDCABS", 40, -10, 10),
+    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs2", "Significance K* TrkpDCABS", 60, -10, 10),
+    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs2", "Significance K* TrkmDCABS", 60, -10, 10),
     "h_leadingPt": TH1F("h_leadingPt2", "Leading Pt", 100, 0, 40),
     "h_trailingPt": TH1F("h_trailingPt2", "Trailing Pt", 100, 0, 40),
-    "h_sign_bckg": TH1F("h_sign_bckg2", "Pure signal and background samples (B-candidate Mass)", 200, 5.0, 5.6),
 }
 
 # Function that initializes a Lorentzvector
@@ -147,13 +145,23 @@ def fill_hist(tree, histograms, Data):
         mumPt = getattr(tree, "mumPt")
         mupPt = getattr(tree, "mupPt")
        
-        # Retrieve the momentum components for the track candidates
+        # Retrieve the momentum components in cylindical coordinates for the track candidates
         Cm = cyl_coord("kstTrkm", tree, i) 
         Cp = cyl_coord("kstTrkp", tree, i)  
         
+        # Determine the most likely flavour for this candidate
         fl_tag = flavour_tag(Cm, Cp)
         tmatch = True
- 
+
+        # Classify samples as background or signal
+        if fl_tag == 1:
+            background = Data and ((5.0 < bMass < 5.133542769) or (5.416657231 < bMass < 5.6))
+            signal = not Data and (5.133542769 <= bMass <= 5.416657231)
+
+        if fl_tag == 2:
+            background = Data and ((5.0 < bBarMass < 5.133542769) or (5.416657231 < bBarMass < 5.6))
+            signal = not Data and (5.133542769 <= bBarMass <= 5.416657231)
+
         if not Data:
             tMum = getattr(tree, "truthMatchMum")
             tMup = getattr(tree, "truthMatchMup")
@@ -161,27 +169,17 @@ def fill_hist(tree, histograms, Data):
             tTrkp = getattr(tree, "truthMatchTrkp")
             tmatch = (tMum and tMup and tTrkm and tTrkp)
 
-        if tmatch:
+        # Filter candidates with truthmatching (only for MC) and background/signal purification cut
+        if tmatch and (signal or background):
                                 
             if fl_tag == 1:
+
                 histograms["h_bTMass"].Fill(bMass)
                 histograms["h_kstTMass"].Fill(kstMass)
-                
-                if ((not Data and bMass >= 5.133542769 and bMass <= 5.416657231)):
-                    histograms["h_sign_bckg"].Fill(bMass)
-                    
-                elif (Data and (bMass <= 5.133542769 or bMass >= 5.416657231)):
-                    histograms["h_sign_bckg"].Fill(bMass)
 
             elif fl_tag == 2:
                 histograms["h_bTMass"].Fill(bBarMass)
                 histograms["h_kstTMass"].Fill(kstBarMass)
-                
-                if ((not Data and bBarMass >= 5.133542769 and bBarMass <= 5.416657231)):
-                    histograms["h_sign_bckg"].Fill(bBarMass)
-                    
-                elif (Data and (bBarMass <= 5.133542769 or bBarMass >= 5.416657231)):
-                    histograms["h_sign_bckg"].Fill(bBarMass)
 
             histograms["h_mumuMass"].Fill(mumuMass)
             histograms["h_bCosAlphaBS"].Fill(bCosAlphaBS)
@@ -249,7 +247,10 @@ def plot_hist(hist1, hist2, file_name, title, info = 0):
     stddev2 = hist2.GetStdDev()
     
     # Create custom statistics box for hist1
-    stats1 = ROOT.TPaveText(0.6, 0.8, 0.8, 0.9, "NDC")
+    if info == 2:
+        stats1 = ROOT.TPaveText(0.6, 0.9, 0.8, 1.0, "NDC")
+    else:
+        stats1 = ROOT.TPaveText(0.6, 0.8, 0.8, 0.9, "NDC")
     stats1.SetBorderSize(1)
     stats1.SetTextColor(ROOT.kRed)
     stats1.AddText(f"Monte Carlo: Entries = {entries1:.0f}")
@@ -258,7 +259,10 @@ def plot_hist(hist1, hist2, file_name, title, info = 0):
     stats1.Draw()
     
     # Create custom statistics box for hist2
-    stats2 = ROOT.TPaveText(0.8, 0.8, 1.0, 0.9, "NDC")
+    if info == 2:
+        stats2 = ROOT.TPaveText(0.8, 0.9, 1.0, 1.0, "NDC")
+    else:
+        stats2 = ROOT.TPaveText(0.8, 0.8, 1.0, 0.9, "NDC")
     stats2.SetBorderSize(1)
     stats2.SetTextColor(ROOT.kBlue)
     stats2.AddText(f"Data: Entries = {entries2:.0f}")
@@ -271,9 +275,12 @@ def plot_hist(hist1, hist2, file_name, title, info = 0):
     if info == 0:
         legend.AddEntry(hist1, "Monte Carlo", "l")
         legend.AddEntry(hist2, "Data", "l")
-    else:
+    elif info == 1:
        legend.AddEntry(hist1, "Monte Carlo (True Mass)", "l")
        legend.AddEntry(hist2, "Data (Tagged Mass)", "l")
+    else:
+       legend.AddEntry(hist1, "Monte Carlo (Signal)", "l")
+       legend.AddEntry(hist2, "Data (Background)", "l")
     
     legend.Draw()
     
@@ -282,7 +289,7 @@ def plot_hist(hist1, hist2, file_name, title, info = 0):
     canvas.Close()
 
 #histograms and save them
-plot_hist(hist1["h_bTMass"], hist2["h_bTMass"], "h_bTMass.pdf", "B Mass", 1)
+plot_hist(hist1["h_bTMass"], hist2["h_bTMass"], "h_bTMass.pdf", "B Mass", 2)
 plot_hist(hist1["h_kstTMass"], hist2["h_kstTMass"], "h_kstTMass.pdf", "K* Mass", 1)
 plot_hist(hist1["h_mumuMass"], hist2["h_mumuMass"], "h_mumuMass.pdf", "MuMu Mass")
 plot_hist(hist1["h_bCosAlphaBS"], hist2["h_bCosAlphaBS"], "h_bCosAlphaBS.pdf", "B CosAlphaBS")
@@ -293,7 +300,6 @@ plot_hist(hist1["h_kstTrkpDCABSs"], hist2["h_kstTrkpDCABSs"], "h_kstTrkpDCABSs.p
 plot_hist(hist1["h_kstTrkmDCABSs"], hist2["h_kstTrkmDCABSs"], "h_kstTrkmDCABSs.pdf", "Significance K* TrkmDCABS")
 plot_hist(hist1["h_leadingPt"], hist2["h_leadingPt"], "h_leadingPt.pdf", "Leading Pt")
 plot_hist(hist1["h_trailingPt"], hist2["h_trailingPt"], "h_trailingPt.pdf", "Trailing Pt")
-plot_hist(hist1["h_sign_bckg"], hist2["h_sign_bckg"], "h_sign_bckg.pdf", "Pure signal and background samples (B-candidate Mass)")
   
 # Save histograms to a new .root file
 output_file = TFile("VariabHist+PureSamples.root", "RECREATE")
