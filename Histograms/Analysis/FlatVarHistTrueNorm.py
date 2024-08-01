@@ -46,8 +46,8 @@ if not tree2:
 # Create histograms for each parameter
 hist1 = {
     "h_bTMass": TH1F("h_bTMass1", "Tagged B Mass", 100, 4.5, 6.0),
-    "h_kstTMass": TH1F("h_kstTMass1", "Tagged K* Mass", 100, 0, 2),
-    "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 11),
+    "h_kstTMass": TH1F("h_kstTMass1", "Tagged K* Mass", 100, 0, 2.0),
+    "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 6.0),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS1", "B CosAlphaBS", 100, -1.0, 1.0),
     "h_bVtxCL": TH1F("h_bVtxCL1", "B VtxCL", 40, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 40, 0, 100),
@@ -60,8 +60,8 @@ hist1 = {
 
 hist2 = {
     "h_bTMass": TH1F("h_bTMass2", "Tagged B Mass", 100, 4.5, 6.0),
-    "h_kstTMass": TH1F("h_kstTMass2", "Tagged K* Mass", 100, 0, 2),
-    "h_mumuMass": TH1F("h_mumuMass2", "MuMu Mass", 100, 0.8, 11),
+    "h_kstTMass": TH1F("h_kstTMass2", "Tagged K* Mass", 100, 0, 2.0),
+    "h_mumuMass": TH1F("h_mumuMass2", "MuMu Mass", 100, 0.8, 6.0),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS2", "B CosAlphaBS", 100, -1.0, 1.0),
     "h_bVtxCL": TH1F("h_bVtxCL2", "B VtxCL", 40, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs2", "Significance B LBS", 40, 0, 100),
