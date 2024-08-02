@@ -12,9 +12,6 @@ from ROOT import TFile, TH1F, TCanvas, TLegend, TLorentzVector
 import numpy as np
 import prepdata as prep
 
-
-
-
 def main():
 
     # Input path
@@ -29,9 +26,8 @@ def main():
 
     dataset = prep.RegressionDataset(x, y)
 
-    print(variable_names)
+    # print(variable_names)
 
-    
     # Test whether x,y are saving correct values
 
     # Avoid unnecessary plots during runtime
@@ -58,8 +54,7 @@ def main():
     h_bVtxCL_Sign.Draw("HIST")
     h_bVtxCL_Bck.Draw("HIST SAME")
     canvas.SaveAs("bVtxCl.pdf")
-    canvas.Close()
-    
+    canvas.Close()   
 
 # Ensure main runs only when the script is executed directly and not when it is imported    
 if __name__ == '__main__':
