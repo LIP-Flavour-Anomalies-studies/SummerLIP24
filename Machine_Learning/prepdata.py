@@ -134,11 +134,11 @@ def SignBck_array(trees, branches):
 
                 current_row = []
                 
-            if fl_tag == 1:
-                current_row.append(kstMass)
+                if fl_tag == 1:
+                    current_row.append(kstMass)
 
-            elif fl_tag == 2:
-                current_row.append(kstBarMass)
+                elif fl_tag == 2:
+                    current_row.append(kstBarMass)
 
                 current_row.append(bCosAlphaBS)
                 current_row.append(bVtxCL)
@@ -216,5 +216,4 @@ class RegressionDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
-
 
