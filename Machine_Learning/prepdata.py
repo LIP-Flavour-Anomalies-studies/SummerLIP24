@@ -90,16 +90,16 @@ def classifier(fl_tag, Data, bMass, bBarMass, tree):
 """     
 
 def SignBck_array(trees, branches):
-
     rows = []
+    labels = []
+    
     nback = 0
     nsignal = 0
     
     for Data, tree in enumerate(trees):
-    
         for i in range(tree.GetEntries()):
             tree.GetEntry(i)
- 
+
             # Retrieve variables of interest
             mumuMass = getattr(tree, "mumuMass")
             bCosAlphaBS = getattr(tree, "bCosAlphaBS")
@@ -119,7 +119,7 @@ def SignBck_array(trees, branches):
             mumPt = getattr(tree, "mumPt")
             mupPt = getattr(tree, "mupPt")
        
-            # Retrieve the momentum components in cylindical coordinates for the track candidates
+            # Retrieve the momentum components in cylindrical coordinates for the track candidates
             Cm = cyl_coord("kstTrkm", tree, i) 
             Cp = cyl_coord("kstTrkp", tree, i)  
         
@@ -131,12 +131,10 @@ def SignBck_array(trees, branches):
 
             # Filter candidates with truthmatching (only for MC) and background/signal purification cut
             if tmatch and (signal or background):
-
                 current_row = []
                 
                 if fl_tag == 1:
                     current_row.append(kstMass)
-
                 elif fl_tag == 2:
                     current_row.append(kstBarMass)
 
@@ -162,19 +160,15 @@ def SignBck_array(trees, branches):
                     current_row.append(mupPt)
                     current_row.append(mumPt)
                 
-                if Data == 0:
-                    nsignal += 1
-                if Data == 1:
-                    nback += 1
+                if signal:
+                    labels.append(1)
+                elif background:
+                    labels.append(0)
                         
                 rows.append(current_row)
     
-    # Define x -> array containing all features for each event
     x = np.array(rows)
-    
-    # Define y -> array labeling all features of each event as signal correspondent (1) or background (0)            
-    y = np.zeros((nsignal + nback, len(branches))) 
-    y[:nsignal] = 1
+    y = np.array(labels)
     
     return x, y
        
@@ -216,4 +210,3 @@ class RegressionDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
-
