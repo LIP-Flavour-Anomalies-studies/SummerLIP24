@@ -52,8 +52,8 @@ hist1 = {
     "h_bVtxCL": TH1F("h_bVtxCL1", "B VtxCL", 40, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 40, 0, 100),
     "h_bDCABSs": TH1F("h_bDCABSs1", "Significance B DCABS", 100, -20, 20),
-    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs1", "Significance K* TrkpDCABS", 40, -10, 10),
-    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs1", "Significance K* TrkmDCABS", 40, -10, 10),
+    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs1", "Significance K* TrkpDCABS", 100, -10, 10),
+    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs1", "Significance K* TrkmDCABS", 100, -10, 10),
     "h_leadingPt": TH1F("h_leadingPt1", "Leading Pt", 100, 0, 40),
     "h_trailingPt": TH1F("h_trailingPt1", "Trailing Pt", 100, 0, 40),
 }
@@ -66,8 +66,8 @@ hist2 = {
     "h_bVtxCL": TH1F("h_bVtxCL2", "B VtxCL", 40, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs2", "Significance B LBS", 40, 0, 100),
     "h_bDCABSs": TH1F("h_bDCABSs2", "Significance B DCABS", 100, -20, 20),
-    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs2", "Significance K* TrkpDCABS", 40, -10, 10),
-    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs2", "Significance K* TrkmDCABS", 40, -10, 10),
+    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs2", "Significance K* TrkpDCABS", 100, -10, 10),
+    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs2", "Significance K* TrkmDCABS", 100, -10, 10),
     "h_leadingPt": TH1F("h_leadingPt2", "Leading Pt", 100, 0, 40),
     "h_trailingPt": TH1F("h_trailingPt2", "Trailing Pt", 100, 0, 40),
 }
