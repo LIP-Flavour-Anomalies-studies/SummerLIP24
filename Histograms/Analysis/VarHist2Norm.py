@@ -44,29 +44,29 @@ if not tree2:
 hist1 = {
     "h_bMass": TH1F("h_bMass1", "B Mass", 100, 4.5, 6.0),
     "h_bBarMass": TH1F("h_bBarMass1", "B Bar Mass", 100, 4.5, 6.0),
-    "h_kstMass": TH1F("h_kstMass1", "K* Mass", 100, 0, 3),
-    "h_kstBarMass": TH1F("h_kstBarMass1", "K* Bar Mass", 100, 0, 3),
-    "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 11),
+    "h_kstMass": TH1F("h_kstMass1", "K* Mass", 100, 0, 2.0),
+    "h_kstBarMass": TH1F("h_kstBarMass1", "K* Bar Mass", 100, 0, 2.0),
+    "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 6.0),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS1", "B CosAlphaBS", 100, -1.0, 1.0),
     "h_bVtxCL": TH1F("h_bVtxCL1", "B VtxCL", 100, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 100, 0, 100),
     "h_bDCABSs": TH1F("h_bDCABSs1", "Significance B DCABS", 100, 0, 20),
-    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs1", "Significance K* TrkpDCABS", 100, 0, 10),
-    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs1", "Significance K* TrkmDCABS", 100, 0, 10),
+    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs1", "Significance K* TrkpDCABS", 100, -10, 10),
+    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs1", "Significance K* TrkmDCABS", 100, -10, 10),
 }
 
 hist2 = {
     "h_bMass": TH1F("h_bMass2", "B Mass", 100, 4.5, 6.0),
     "h_bBarMass": TH1F("h_bBarMass2", "B Bar Mass", 100, 4.5, 6.0),
-    "h_kstMass": TH1F("h_kstMass2", "K* Mass", 100, 0, 3),
-    "h_kstBarMass": TH1F("h_kstBarMass2", "K* Bar Mass", 100, 0, 3),
-    "h_mumuMass": TH1F("h_mumuMass2", "MuMu Mass", 100, 0.8, 11),
+    "h_kstMass": TH1F("h_kstMass2", "K* Mass", 100, 0, 2.0),
+    "h_kstBarMass": TH1F("h_kstBarMass2", "K* Bar Mass", 100, 0, 2.0),
+    "h_mumuMass": TH1F("h_mumuMass2", "MuMu Mass", 100, 0.8, 6.0),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS2", "B CosAlphaBS", 100, -1.0, 1.0),
     "h_bVtxCL": TH1F("h_bVtxCL2", "B VtxCL", 100, 0, 1.0),
-    "h_bLBSs": TH1F("h_bLBSs2", "Significance B LBS", 100, 0, 20),
+    "h_bLBSs": TH1F("h_bLBSs2", "Significance B LBS", 100, 0, 100),
     "h_bDCABSs": TH1F("h_bDCABSs2", "Significance B DCABS", 100, 0, 20),
-    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs2", "Significance K* TrkpDCABS", 100, 0, 10),
-    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs2", "Significance K* TrkmDCABS", 100, 0, 10),
+    "h_kstTrkpDCABSs": TH1F("h_kstTrkpDCABSs2", "Significance K* TrkpDCABS", 100, -10, 10),
+    "h_kstTrkmDCABSs": TH1F("h_kstTrkmDCABSs2", "Significance K* TrkmDCABS", 100, -10, 10),
 }
 
 # Function to fill histograms from a tree
@@ -133,10 +133,10 @@ fill_hist(tree2, hist2)
 
 # Normalize the Histograms
 for key, hist in hist1.items():
-    hist.Scale(1./hist.GetMaximum())
+    hist.Scale(1./hist.Integral())
  
 for key, hist in hist2.items():
-    hist.Scale(1./hist.GetMaximum())
+    hist.Scale(1./hist.Integral())
            
 # Function to plot two histograms on the same canvas and save as .pdf
 def plot_hist(hist1, hist2, file_name, title):
@@ -149,6 +149,11 @@ def plot_hist(hist1, hist2, file_name, title):
     # Set titles for histograms
     hist1.SetTitle(title)
     hist2.SetTitle(title)
+
+    # Set the y-axis maximum to include all data
+    max_y = max(hist1.GetMaximum(), hist2.GetMaximum())
+    hist1.SetMaximum(1.05 * max_y)
+    hist2.SetMaximum(1.05 * max_y)
     
     # Draw histograms on the main canvas
     hist1.Draw("HIST")
@@ -168,25 +173,25 @@ def plot_hist(hist1, hist2, file_name, title):
     stddev2 = hist2.GetStdDev()
     
     # Create custom statistics box for hist1
-    stats1 = ROOT.TPaveText(0.6, 0.9, 0.8, 1.0, "NDC")
+    stats1 = ROOT.TPaveText(0.6, 0.8, 0.8, 0.9, "NDC")
     stats1.SetBorderSize(1)
     stats1.SetTextColor(ROOT.kRed)
-    stats1.AddText(f"Monte Carlo: Entries = {entries1:.0f}")
+    stats1.AddText(f"Entries = {entries1:.0f}")
     stats1.AddText(f"Mean = {mean1:.3f}")
-    stats1.AddText(f"Std Dev = {stddev1:.3f}")
+    stats1.AddText(f"Std. Dev. = {stddev1:.3f}")
     stats1.Draw()
     
     # Create custom statistics box for hist2
-    stats2 = ROOT.TPaveText(0.8, 0.9, 1.0, 1.0, "NDC")
+    stats2 = ROOT.TPaveText(0.8, 0.8, 1.0, 0.9, "NDC")
     stats2.SetBorderSize(1)
     stats2.SetTextColor(ROOT.kBlue)
-    stats2.AddText(f"Data: Entries = {entries2:.0f}")
+    stats2.AddText(f"Entries = {entries2:.0f}")
     stats2.AddText(f"Mean = {mean2:.3f}")
-    stats2.AddText(f"Std Dev = {stddev2:.3f}")
+    stats2.AddText(f"Std. Dev. = {stddev2:.3f}")
     stats2.Draw()
     
     # Create a legend and add entries with statistics
-    legend = ROOT.TLegend(0.8, 0.2, 1.0, 0.3)  # Adjusted to not overlap with stats boxes
+    legend = ROOT.TLegend(0.8, 0.4, 1.0, 0.5)  # Adjusted to not overlap with stats boxes
     legend.AddEntry(hist1, "Monte Carlo", "l")
     legend.AddEntry(hist2, "Data", "l")
     legend.Draw()
@@ -198,8 +203,7 @@ def plot_hist(hist1, hist2, file_name, title):
     canvas.SaveAs(file_name)
     canvas.Close()
 
-
-#histograms and save them
+# Plot histograms and save them
 plot_hist(hist1["h_bMass"], hist2["h_bMass"], "h_bMass.pdf", "B Mass")
 plot_hist(hist1["h_bBarMass"], hist2["h_bBarMass"], "h_bBarMass.pdf", "B Bar Mass")
 plot_hist(hist1["h_kstMass"], hist2["h_kstMass"], "h_kstMass.pdf", "K* Mass")

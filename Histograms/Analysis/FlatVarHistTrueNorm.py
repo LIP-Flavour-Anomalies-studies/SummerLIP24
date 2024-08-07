@@ -45,9 +45,9 @@ if not tree2:
     
 # Create histograms for each parameter
 hist1 = {
-    "h_bTMass": TH1F("h_bTMass1", "B Mass", 100, 4.5, 6.0),
-    "h_kstTMass": TH1F("h_kstTMass1", "K* Mass", 100, 0, 3),
-    "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 11),
+    "h_bTMass": TH1F("h_bTMass1", "Tagged B Mass", 100, 4.5, 6.0),
+    "h_kstTMass": TH1F("h_kstTMass1", "Tagged K* Mass", 100, 0, 2.0),
+    "h_mumuMass": TH1F("h_mumuMass1", "MuMu Mass", 100, 0.8, 6.0),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS1", "B CosAlphaBS", 100, -1.0, 1.0),
     "h_bVtxCL": TH1F("h_bVtxCL1", "B VtxCL", 40, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs1", "Significance B LBS", 40, 0, 100),
@@ -59,9 +59,9 @@ hist1 = {
 }
 
 hist2 = {
-    "h_bTMass": TH1F("h_bTMass2", "B Mass", 100, 4.5, 6.0),
-    "h_kstTMass": TH1F("h_kstTMass2", "K* Mass", 100, 0, 3),
-    "h_mumuMass": TH1F("h_mumuMass2", "MuMu Mass", 100, 0.8, 11),
+    "h_bTMass": TH1F("h_bTMass2", "Tagged B Mass", 100, 4.5, 6.0),
+    "h_kstTMass": TH1F("h_kstTMass2", "Tagged K* Mass", 100, 0, 2.0),
+    "h_mumuMass": TH1F("h_mumuMass2", "MuMu Mass", 100, 0.8, 6.0),
     "h_bCosAlphaBS": TH1F("h_bCosAlphaBS2", "B CosAlphaBS", 100, -1.0, 1.0),
     "h_bVtxCL": TH1F("h_bVtxCL2", "B VtxCL", 40, 0, 1.0),
     "h_bLBSs": TH1F("h_bLBSs2", "Significance B LBS", 40, 0, 100),
@@ -198,15 +198,15 @@ fill_hist(tree2, hist2, True)
            
 # Normalize the Histograms
 for key, hist in hist1.items():
-    if hist.GetMaximum() != 0:    
-        hist.Scale(1./hist.GetMaximum())
+    if hist.Integral() != 0:    
+        hist.Scale(1./hist.Integral())
  
 for key, hist in hist2.items():
-    if hist.GetMaximum() != 0:
-        hist.Scale(1./hist.GetMaximum())
+    if hist.Integral() != 0:
+        hist.Scale(1./hist.Integral())
            
 # Function to plot two histograms on the same canvas and save as .pdf
-def plot_hist(hist1, hist2, file_name, title, info = 0):
+def plot_hist(hist1, hist2, file_name, title):
     canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
     
     # Set line colors for histograms
@@ -217,6 +217,11 @@ def plot_hist(hist1, hist2, file_name, title, info = 0):
     hist1.SetTitle(title)
     hist2.SetTitle(title)
     
+    # Set the y-axis maximum to include all data
+    max_y = max(hist1.GetMaximum(), hist2.GetMaximum())
+    hist1.SetMaximum(1.05 * max_y)
+    hist2.SetMaximum(1.05 * max_y)
+
     # Draw histograms on the main canvas
     hist1.Draw("HIST")
     hist2.Draw("HIST SAME")
@@ -238,29 +243,24 @@ def plot_hist(hist1, hist2, file_name, title, info = 0):
     stats1 = ROOT.TPaveText(0.6, 0.8, 0.8, 0.9, "NDC")
     stats1.SetBorderSize(1)
     stats1.SetTextColor(ROOT.kRed)
-    stats1.AddText(f"Monte Carlo: Entries = {entries1:.0f}")
+    stats1.AddText(f"Entries = {entries1:.0f}")
     stats1.AddText(f"Mean = {mean1:.3f}")
-    stats1.AddText(f"Std Dev = {stddev1:.3f}")
+    stats1.AddText(f"Std. Dev. = {stddev1:.3f}")
     stats1.Draw()
     
     # Create custom statistics box for hist2
     stats2 = ROOT.TPaveText(0.8, 0.8, 1.0, 0.9, "NDC")
     stats2.SetBorderSize(1)
     stats2.SetTextColor(ROOT.kBlue)
-    stats2.AddText(f"Data: Entries = {entries2:.0f}")
+    stats2.AddText(f"Entries = {entries2:.0f}")
     stats2.AddText(f"Mean = {mean2:.3f}")
-    stats2.AddText(f"Std Dev = {stddev2:.3f}")
+    stats2.AddText(f"Std. Dev. = {stddev2:.3f}")
     stats2.Draw()
     
     # Create a legend and add entries with statistics
-    legend = ROOT.TLegend(0.8, 0.2, 1.0, 0.3)  # Adjusted to not overlap with stats boxes
-    if info == 0:
-        legend.AddEntry(hist1, "Monte Carlo", "l")
-        legend.AddEntry(hist2, "Data", "l")
-    else:
-       legend.AddEntry(hist1, "Monte Carlo (True Mass)", "l")
-       legend.AddEntry(hist2, "Data (Tagged Mass)", "l")
-    
+    legend = ROOT.TLegend(0.8, 0.4, 1.0, 0.5)  # Adjusted to not overlap with stats boxes
+    legend.AddEntry(hist1, "Monte Carlo", "l")
+    legend.AddEntry(hist2, "Data", "l")
     legend.Draw()
     
     # Save the canvas to a file
@@ -268,8 +268,8 @@ def plot_hist(hist1, hist2, file_name, title, info = 0):
     canvas.Close()
 
 #histograms and save them
-plot_hist(hist1["h_bTMass"], hist2["h_bTMass"], "h_bTMass.pdf", "B Mass", 1)
-plot_hist(hist1["h_kstTMass"], hist2["h_kstTMass"], "h_kstTMass.pdf", "K* Mass", 1)
+plot_hist(hist1["h_bTMass"], hist2["h_bTMass"], "h_bTMass.pdf", "Tagged B Mass")
+plot_hist(hist1["h_kstTMass"], hist2["h_kstTMass"], "h_kstTMass.pdf", "Tagged K* Mass")
 plot_hist(hist1["h_mumuMass"], hist2["h_mumuMass"], "h_mumuMass.pdf", "MuMu Mass")
 plot_hist(hist1["h_bCosAlphaBS"], hist2["h_bCosAlphaBS"], "h_bCosAlphaBS.pdf", "B CosAlphaBS")
 plot_hist(hist1["h_bVtxCL"], hist2["h_bVtxCL"], "h_bVtxCL.pdf", "B VtxCL")
