@@ -13,7 +13,7 @@ import numpy as np
 import torch
 
 # dir = ... #Diogo
-dir = "/user/u/u24gmarujo/SummerLIP24/Machine_Learning/" #Gonçalo
+dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo
 MC_file = "MC.root"
 ED_file = "ED.root"
 

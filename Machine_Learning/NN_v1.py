@@ -56,7 +56,7 @@ def main():
     try:
         # Input path
         # dir = ... #Diogo
-        dir = "/user/u/u24gmarujo/SummerLIP24/Machine_Learning/" 
+        dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo 
         MC_file = "MC.root"
         ED_file = "ED.root"
         

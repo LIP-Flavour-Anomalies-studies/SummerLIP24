@@ -69,7 +69,7 @@ def calculate_metrics(predictions, targets):
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0
     f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
     
-    return accuracy, precision, recall, f1, np.array([[tn, fp], [fn, tp]])
+    return accuracy, precision, recall, f1, np.array([[tp, fp], [fn, tn]])
 
 def calculate_roc_auc(targets, probabilities):
     thresholds = sorted(set(probabilities), reverse=True)
@@ -138,7 +138,8 @@ def evaluate_model(model, test_loader):
 def main():
     try:
         # Input path
-        dir = "/user/u/u24gmarujo/SummerLIP24/Machine_Learning/" 
+        #dir = "..." #Diogo
+        dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo
         MC_file = "MC.root"
         ED_file = "ED.root"
         
