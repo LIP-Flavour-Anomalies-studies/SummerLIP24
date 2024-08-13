@@ -50,12 +50,12 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
     
     # Plot the training loss
     plt.figure()
-    plt.plot(range(1, num_epochs + 1), train_losses, marker='o', label='Training Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training Loss Over Epochs')
+    plt.plot(range(1, num_epochs + 1), train_losses, marker="o", label="Training Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training Loss Over Epochs")
     plt.legend()
-    plt.savefig('training_loss.pdf')  # Save the plot as a PNG file
+    plt.savefig("training_loss.pdf")  # Save the plot as a PNG file
     plt.close()  # Close the figure to free up memory
 
 def calculate_metrics(predictions, targets):
@@ -122,19 +122,48 @@ def evaluate_model(model, test_loader):
     fpr, tpr, roc_auc = calculate_roc_auc(targets, probabilities)
     
     plt.figure()
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.plot(fpr, tpr, color="darkorange", lw=2, label=f"ROC Curve (A = {roc_auc:.2f})")
+    plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--", label="Random Classifier")
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC)')
-    plt.legend(loc='lower right')
-    plt.savefig('roc_curve.pdf')  # Save the ROC curve plot
-    plt.close()  # Close the figure to free up memory
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("Receiver Operating Characteristic (ROC)")
+    plt.legend(loc="lower right")
+    plt.savefig("roc_curve.pdf")
+    plt.close()
     
     return predictions, targets
 
+def plot_histograms(model, data_loader, labels):
+    model.eval()
+    prob = []
+    targets = []
+    
+    with torch.no_grad():
+        for inputs, _ in data_loader:
+            outputs = model(inputs).squeeze()
+            prob.extend(outputs.cpu().numpy())
+    
+    prob = np.array(prob)
+    targets = np.array(labels)
+
+    plt.figure(figsize=(8, 6))
+        
+    # Signal predictions
+    signal_predict = prob[targets == 1]
+    plt.hist(signal_predict, bins=40, density=True, alpha=0.9, label="Signal (MC)", color="blue")
+
+    # Background predictions
+    background_predict = prob[targets == 0]
+    plt.hist(background_predict, bins=40, density=True, alpha=0.5, label="Background (ED)", color="red", hatch="//", edgecolor="black")
+        
+    plt.xlabel("Predicted Probability", fontsize=14, labelpad=15)
+    plt.ylabel("Normalized Density", fontsize=14, labelpad=15) 
+    plt.legend()
+    plt.savefig("histNN.pdf")  # Save the plot as a PDF file
+    plt.close()
+        
 def main():
     try:
         # Input path
@@ -180,10 +209,13 @@ def main():
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
         # Train the model
-        train_model(model, train_dataloader, criterion, optimizer, num_epochs=10)
+        train_model(model, train_dataloader, criterion, optimizer, num_epochs=100)
 
         # Evaluate on the test set
         predictions, targets = evaluate_model(model, test_dataloader)
+        
+        # Plot the histograms of predicted probabilities
+        plot_histograms(model, test_dataloader, targets)
         
     except Exception as e:
         print(f"An error occurred: {e}")
