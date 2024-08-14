@@ -10,6 +10,7 @@ LIP Internship Program | Flavour Anomalies
 import uproot3 as uproot
 import awkward0 as ak
 import numpy as np
+import os
 import prepdata as prep
 import torch
 import torch.nn as nn
@@ -32,19 +33,58 @@ class ClassificationModel(nn.Module):
         x = self.first_layer(x)
         x = self.sigmoid(x)  # Apply sigmoid to get output in [0, 1]
         return x
+      
+      
+      
+      
+class EarlyStopping:
+    def __init__(self, patience=5, delta=0):
+        self.patience = patience
+        self.delta = delta
+        self.best_score = None
+        self.early_stop = False
+        self.counter = 0
+        self.best_model_state = None
+
+    def __call__(self, val_loss, model):
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.best_model_state = model.state_dict()
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.best_model_state = model.state_dict()
+            self.counter = 0
+
+    def load_best_model(self, model):
+        model.load_state_dict(self.best_model_state)
+     
+ 
+      
+      
+      
+      
+      
+      
         
 '''        
 -------------------------------------------||-------------------------------------------        
 '''       
         
 
-def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
+def train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=100):
 
     train_losses = []
+    validation_losses = []
 
     for epoch in range(num_epochs):
         model.train() # Switch model to training mode
-        running_loss = 0.0
+        t_loss = 0.0
         
         for inputs, targets in train_loader:
             
@@ -64,20 +104,39 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
             optimizer.step() 
             
             # .item() converts scalar tensor 'loss' into a standard Python float
-            running_loss += loss.item()
+            t_loss += loss.item() * inputs.size(0)
             
-        train_losses.append(running_loss)          
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {running_loss}")
+        t_loss /= len(train_loader.dataset)     
+        train_losses.append(t_loss)          
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {t_loss}")
         
+        model.eval()
+        v_loss = 0.0
+        with torch.no_grad():
+            for val_inputs, val_targets in val_loader:
+                val_outputs = model(val_inputs).squeeze()
+                val_loss = criterion(val_outputs, val_targets) 
+                v_loss += val_loss.item() * val_inputs.size(0)
+           
+        v_loss /= len(val_loader.dataset)         
+        validation_losses.append(v_loss) 
+        
+        early_stopping(val_loss, model)
+        if early_stopping.early_stop:
+            print("Early stopping")
+        
+    # Load the best model
+    early_stopping.load_best_model(model)
         
     # Plot the training loss
     plt.figure()
-    plt.plot(range(1, num_epochs + 1), train_losses, marker='o', label='Training Loss')
+    plt.plot(range(20, num_epochs + 1), train_losses[19:], marker='o', color='navy', label='Training')
+    plt.plot(range(20, num_epochs + 1), validation_losses[19:], marker='o', color='darkorange', label='Validation')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.title('Training Loss Over Epochs')
+    plt.title('Loss Over Epochs')
     plt.legend()
-    plt.savefig('training_loss.pdf')  
+    plt.savefig('training_validation_loss.pdf')  
     plt.close()  
         
 
@@ -117,6 +176,7 @@ def main():
 
         # Create DataLoader for training and testing
         train_dataloader = DataLoader(train_set, batch_size=32, shuffle=True)
+        val_dataloader = DataLoader(val_set, batch_size=32, shuffle=True)
         test_dataloader = DataLoader(test_set, batch_size=64, shuffle=False)
 
         # Create an instance of 'ClassificationModel' called model
@@ -128,16 +188,27 @@ def main():
         criterion = nn.BCELoss()
         optimizer = optim.Adam(model.parameters(), lr=0.001) # Pass model parameters (weights and biases) to the optimizer
 
+        # Early stopping
+        early_stopping = EarlyStopping(patience=30, delta=-0.01)
+
         # Train the model
-        train_model(model, train_dataloader, criterion, optimizer, num_epochs=10)
+        train_model(model, early_stopping, train_dataloader, val_dataloader, criterion, optimizer, num_epochs=500)
         
+        
+        # Define the directory and filename
+        checkpoint_dir = '/user/u/u24diogobpereira/LocalRep/Machine_Learning/Diogo/Evaluation/' #Diogo
+        checkpoint_file = 'model_checkpoint.pth'
+        checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
+
+        # Create the directory if it doesn't exist
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
         # Save model and optimizer state dict and test dataset
         torch.save({'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                     'dataset': dataset,
-                    'test_set': test_set},
-                    'model_checkpoint.pth')
-
+                    'test_set': test_set}, checkpoint_path)        
+       
     except Exception as e:
         print(f"An error occurred: {e}")
         
