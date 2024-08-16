@@ -38,7 +38,7 @@ class ClassificationModel(nn.Module):
       
       
 class EarlyStopping:
-    def __init__(self, patience=5, delta=0):
+    def __init__(self, patience, delta):
         self.patience = patience
         self.delta = delta
         self.best_score = None
@@ -52,7 +52,7 @@ class EarlyStopping:
         if self.best_score is None:
             self.best_score = score
             self.best_model_state = model.state_dict()
-        elif score < self.best_score + self.delta:
+        elif score < self.best_score - self.delta:
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
@@ -64,12 +64,32 @@ class EarlyStopping:
     def load_best_model(self, model):
         model.load_state_dict(self.best_model_state)
      
- 
+                  
       
-      
-      
-      
-      
+  
+  
+  
+def regularisation(val_loader, model, criterion, epoch, num_epochs, early_stopping):  
+  
+    model.eval()
+    v_loss = 0.0
+    
+    # Compute validation loss for 1 epoch
+    with torch.no_grad():
+        for val_inputs, val_targets in val_loader:
+            val_outputs = model(val_inputs).squeeze()
+            val_loss = criterion(val_outputs, val_targets) 
+            v_loss += val_loss.item() * val_inputs.size(0)          
+        v_loss /= len(val_loader.dataset)              
+        print(f"Epoch {epoch+1}/{num_epochs}, v_loss: {v_loss}")  
+        
+        # Check if validation loss has reached its minimum
+        early_stopping(v_loss, model)
+    
+    return v_loss
+  
+  
+  
       
         
 '''        
@@ -79,8 +99,10 @@ class EarlyStopping:
 
 def train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=100):
 
+    stop_flag = 0
     train_losses = []
     validation_losses = []
+    idx = num_epochs
 
     for epoch in range(num_epochs):
         model.train() # Switch model to training mode
@@ -106,32 +128,34 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
             # .item() converts scalar tensor 'loss' into a standard Python float
             t_loss += loss.item() * inputs.size(0)
             
-        t_loss /= len(train_loader.dataset)     
-        train_losses.append(t_loss)          
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {t_loss}")
+        t_loss /= len(train_loader.dataset)            
+        # print(f"Epoch {epoch+1}/{num_epochs}, Loss: {t_loss}")
         
-        model.eval()
-        v_loss = 0.0
-        with torch.no_grad():
-            for val_inputs, val_targets in val_loader:
-                val_outputs = model(val_inputs).squeeze()
-                val_loss = criterion(val_outputs, val_targets) 
-                v_loss += val_loss.item() * val_inputs.size(0)
-           
-        v_loss /= len(val_loader.dataset)         
+        
+        v_loss = regularisation(val_loader, model, criterion, epoch, num_epochs, early_stopping)
+        
+        # Save losses in vector for loss over epochs plot
+        train_losses.append(t_loss)   
         validation_losses.append(v_loss) 
         
-        early_stopping(val_loss, model)
-        if early_stopping.early_stop:
-            print("Early stopping")
+        # Save best epoch number
+        if early_stopping.early_stop and stop_flag == 0:
+            idx = epoch - early_stopping.patience
+            print(f"Early stopping at epoch {idx}\n Lowest loss: {-early_stopping.best_score}")
+            stop_flag = 1
         
     # Load the best model
     early_stopping.load_best_model(model)
         
+    indices = range(100, num_epochs + 1) 
+    train_losses = train_losses[99:]   
+    validation_losses = validation_losses[99:]
+        
     # Plot the training loss
     plt.figure()
-    plt.plot(range(20, num_epochs + 1), train_losses[19:], marker='o', color='navy', label='Training')
-    plt.plot(range(20, num_epochs + 1), validation_losses[19:], marker='o', color='darkorange', label='Validation')
+    plt.plot(indices[::2], train_losses[::2], marker='o', color='navy', label='Training', markersize=1)
+    plt.plot(indices[::2], validation_losses[::2], marker='o', color='darkorange', label='Validation', markersize=1)
+    plt.scatter(idx + 1, validation_losses[idx-100], marker='o', color='black', label='Early Stop', s=64)
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Loss Over Epochs')
@@ -188,11 +212,11 @@ def main():
         criterion = nn.BCELoss()
         optimizer = optim.Adam(model.parameters(), lr=0.001) # Pass model parameters (weights and biases) to the optimizer
 
-        # Early stopping
-        early_stopping = EarlyStopping(patience=30, delta=-0.01)
+        # Early stopping (delta should be positive quantity)
+        early_stopping = EarlyStopping(patience=100, delta=0)
 
         # Train the model
-        train_model(model, early_stopping, train_dataloader, val_dataloader, criterion, optimizer, num_epochs=500)
+        train_model(model, early_stopping, train_dataloader, val_dataloader, criterion, optimizer, num_epochs=1500)
         
         
         # Define the directory and filename
