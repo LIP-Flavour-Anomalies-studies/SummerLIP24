@@ -11,6 +11,7 @@ LIP Internship Program | Flavour Anomalies
 import torch
 import sys
 import os
+from fpdf import FPDF
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
@@ -64,7 +65,7 @@ def get_targets_probabilities(model, test_loader):
 def plot_roc_curve(fpr, tpr, auc, ix, filename ='roc_curve.pdf'):
     plt.figure()
     plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label = 'Random Classifier')
     plt.scatter(fpr[ix], tpr[ix], marker='o', color='black', label='Best')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
@@ -93,25 +94,27 @@ def get_predictions(model, test_loader, best_thresh):
 
 
 
-def plot_histograms(targets, probabilities):
+def plot_histograms(targets, probabilities, best_thresh):
     prob = np.array(probabilities)
     targets = np.array(targets)
 
     plt.figure(figsize=(8, 6))
-        
-    # Signal predictions
-    signal_predict = prob[targets == 1]
-    plt.hist(signal_predict, bins=40, density=True, alpha=0.7, label="Signal (MC)", color="blue")
 
     # Background predictions
     background_predict = prob[targets == 0]
-    plt.hist(background_predict, bins=40, density=True, alpha=0.5, label="Background (ED)", color="red", hatch="//", edgecolor="black")
-        
+    plt.hist(background_predict, bins=40, range=(0,1), density=True, alpha=0.5, label="Background (ED)", color="red", hatch="//", edgecolor="black")
+    
+    # Signal predictions
+    signal_predict = prob[targets == 1]
+    plt.hist(signal_predict, bins=40, range=(0,1), density=True, alpha=0.7, label="Signal (MC)", color="blue")
+    
+    plt.axvline(x=best_thresh, color='grey', lw=2, label=f'Threshold = {best_thresh:.2f}')
     plt.xlabel("Predicted Probability", fontsize=14, labelpad=15)
     plt.ylabel("Normalized Density", fontsize=14, labelpad=15) 
     plt.legend()
     plt.savefig("prob_dsitribution.pdf")  # Save the plot as a PDF file
     plt.close()
+
 
 
 
@@ -156,7 +159,31 @@ def scatter_plots(test_loader, probabilities, targets):
         plt.close()
  
  
+
+
+def save_metrics(accuracy, precision, recall, f1, c):
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    # Add accuracy, precision, recall, and F1 score
+    pdf.cell(200, 10, txt=f"Accuracy -> Fraction of correctly classified samples:\n {accuracy:.4f}", ln=True, align='L')
+    pdf.cell(200, 10, txt=f"Precision -> Ability of the classifier not to label as signal a sample that is background:\n {precision:.4f}", ln=True, align='L')
+    pdf.cell(200, 10, txt=f"Recall -> Ability of classifier to find all signal samples:\n {recall:.4f}", ln=True, align='L')
+    pdf.cell(200, 10, txt=f"F1 score -> Harmonic mean of precision and recall:\n {f1:.4f}\n", ln=True, align='L')
+
+    # Add confusion matrix
+    pdf.cell(200, 10, txt="Confusion Matrix:", ln=True, align='L')
+    pdf.cell(200, 10, txt="|tn fp|", ln=True, align='L')
+    pdf.cell(200, 10, txt="|fn tp|\n", ln=True, align='L')
+    pdf.cell(200, 10, txt=f"|{c[0,0]} {c[0,1]}|", ln=True, align='L')
+    pdf.cell(200, 10, txt=f"|{c[1,0]} {c[1,1]}|\n", ln=True, align='L')
     
+    pdf.output("classification_report.pdf")
+    
+
+
 
 '''
 -------------------------------------MAIN--------------------------------------------
@@ -174,10 +201,20 @@ fpr, tpr, thresholds = roc_curve(targets, probabilities)
 roc_auc = auc(fpr, tpr)
        
 # Get the best threshold
-J = tpr - fpr
+'''
+J = tpr - 1.5 * fpr
 ix = np.argmax(J)
 best_thresh = thresholds[ix]
 print('\nBest Threshold = %f' % (best_thresh))
+'''
+f1_vector=[]
+for thresh in thresholds:
+    predictions = get_predictions(model, test_loader, thresh)
+    f1_vector.append(f1_score(targets, predictions))
+    
+f1_vector = np.array(f1_vector)
+ix = np.argmax(f1_vector)
+best_thresh = thresholds[ix]
 
 # Plot ROC curve
 plot_roc_curve(fpr, tpr, roc_auc, ix)
@@ -192,18 +229,8 @@ recall = recall_score(targets, predictions) # (tp / (tp + fn)) = tpr[best_thresh
 f1 = f1_score(targets, predictions)
 c = confusion_matrix(targets, predictions)
 
-print(f"Accuracy -> Fraction of correctly classified samples:\n {accuracy:.4f}")
-print(f"Precision -> Ability of the classifier not to label as signal a sample that is background:\n {precision:.4f}")
-print(f"Recall -> Ability of classifier to find all signal samples:\n {recall:.4f}")
-print(f"F1 score -> Harmonic mean of precision and recall:\n {f1:.4f}\n")
-    
-# Confusion Matrix
-print("Confusion Matrix:")
-print("|tn fp|")
-print("|fn tp|\n")
-print(c)
-    
-plot_histograms(targets, probabilities)
+save_metrics(accuracy, precision, recall, f1, c)   
+plot_histograms(targets, probabilities, best_thresh)
 scatter_plots(test_loader, probabilities, targets)
 
 
