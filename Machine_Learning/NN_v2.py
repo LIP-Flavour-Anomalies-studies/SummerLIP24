@@ -27,6 +27,25 @@ class ClassificationModel(nn.Module):
         x = self.fc(x)
         x = self.sigmoid(x)  # Apply sigmoid to get output in [0, 1]
         return x
+    
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1, gamma=2):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, inputs, targets):
+        # Calculate the standard binary cross-entropy loss without reduction
+        BCE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction='none')
+        
+        # Calculate the probability of correct classification
+        pt = torch.exp(-BCE_loss)
+        
+        # Apply the modulating factor (1-pt)^gamma to the loss
+        F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
+        
+        # Return the mean of the focal loss
+        return torch.mean(F_loss)
 
 # Set the matplotlib backend to 'Agg' for saving plots as files
 plt.switch_backend('Agg')
@@ -152,11 +171,11 @@ def plot_histograms(model, data_loader, labels):
         
     # Signal predictions
     signal_predict = prob[targets == 1]
-    plt.hist(signal_predict, bins=40, density=True, alpha=0.9, label="Signal (MC)", color="blue")
+    plt.hist(signal_predict, bins=40, density=True, alpha=0.9, label="Signal (MC)", color="blue", range=(0.0, 1.0))
 
     # Background predictions
     background_predict = prob[targets == 0]
-    plt.hist(background_predict, bins=40, density=True, alpha=0.5, label="Background (ED)", color="red", hatch="//", edgecolor="black")
+    plt.hist(background_predict, bins=40, density=True, alpha=0.5, label="Background (ED)", color="red", hatch="//", edgecolor="black", range=(0.0, 1.0))
         
     plt.xlabel("Predicted Probability", fontsize=14, labelpad=15)
     plt.ylabel("Normalized Density", fontsize=14, labelpad=15) 
@@ -204,8 +223,12 @@ def main():
         input_size = x.shape[1]
         model = ClassificationModel(input_size)
 
+        # Calculate class weights
+        total_sampl = len(y)
+        class_wght = torch.tensor([total_sampl / (2 * np.sum(y == 0)), total_sampl / (2 * np.sum(y == 1))], dtype=torch.float32)
+
         # Define loss function and optimizer
-        criterion = nn.BCELoss()
+        criterion = FocalLoss(alpha=class_wght[1])
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
         # Train the model
