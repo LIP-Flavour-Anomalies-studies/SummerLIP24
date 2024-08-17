@@ -217,7 +217,7 @@ def main():
         tl_vector, vl_vector, idx = train_model(best_model, early_stopping, train_loader, val_loader, criterion, best_optimizer, num_epochs=1000)
 
         checkpoint_dir = "/user/u/u24gmarujo/SummerLIP24/Machine_Learning/Evaluation/"
-        checkpoint_file = "Opt_model_checkpoint.pth"
+        checkpoint_file = "Optim_model_checkpoint.pth"
         checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
 
         os.makedirs(checkpoint_dir, exist_ok=True)
@@ -226,11 +226,13 @@ def main():
         torch.save({
             "model_state_dict": best_model.state_dict(),
             "optimizer_state_dict": best_optimizer.state_dict(),
-            "hyperparameters": trial.params
-        }, checkpoint_path)
+            "dataset": dataset,
+            "test_set": test_set,
+            "hyperparameters": trial.params}, checkpoint_path)
 
         print(f"Best model saved to {checkpoint_path}")
 
+        """
         # Plot the best training and validation losses
         indices = range(1, len(tl_vector) + 1)
         plt.figure()
@@ -241,8 +243,9 @@ def main():
         plt.ylabel("Loss")
         plt.title("Best Trial Loss Over Epochs")
         plt.legend()
-        plt.savefig("Best_Opt_loss.pdf")
+        plt.savefig("Optim_loss.pdf")
         plt.close()
+        """
 
     except Exception as e:
         print(f"An error occurred: {e}")
