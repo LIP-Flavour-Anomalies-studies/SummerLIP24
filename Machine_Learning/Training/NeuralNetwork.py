@@ -137,7 +137,7 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
     plt.figure()
     plt.plot(indices, tl_vector, marker="o", color="navy", label="Training", markersize=1)
     plt.plot(indices, vl_vector, marker="o", color="darkorange", label="Validation", markersize=1)
-    plt.scatter(idx + 1, vl_vector[idx-100], marker="o", color="black", label="Early Stop", s=64)
+    plt.scatter(idx + 1, vl_vector[idx], marker="o", color="black", label="Early Stop", s=64)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title("Loss Over Epochs")
