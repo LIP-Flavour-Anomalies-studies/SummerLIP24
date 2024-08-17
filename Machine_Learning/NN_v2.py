@@ -36,7 +36,7 @@ class FocalLoss(nn.Module):
 
     def forward(self, inputs, targets):
         # Calculate the standard binary cross-entropy loss without reduction
-        BCE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction='none')
+        BCE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction="none")
         
         # Calculate the probability of correct classification
         pt = torch.exp(-BCE_loss)
@@ -46,36 +46,103 @@ class FocalLoss(nn.Module):
         
         # Return the mean of the focal loss
         return torch.mean(F_loss)
+    
+class EarlyStopping:
+    def __init__(self, patience, delta):
+        self.patience = patience  # Number of epochs to wait for improvement in validation loss, before stopping the training
+        self.delta = delta  # Minimum change in validation loss that qualifies as an improvement
+        self.best_score = None  # Best validation score encountered during training
+        self.early_stop = False  # Boolean flag that indicates if training should be stopped early
+        self.counter = 0  # Counts the number of epochs since the last improvement in validation loss
+        self.best_model_state = None  # Stores the state of the model when the best validation loss was observed
+
+    def __call__(self, val_loss, model):
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.best_model_state = model.state_dict()
+        elif score < self.best_score - self.delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.best_model_state = model.state_dict()
+            self.counter = 0
+
+    def load_best_model(self, model):
+        model.load_state_dict(self.best_model_state)
+        
+def regul(val_loader, model, criterion, epoch, num_epochs, early_stopping):  
+  
+    model.eval()
+    val_loss = 0.0
+    
+    # Compute validation loss for 1 epoch
+    with torch.no_grad():
+        for val_inputs, val_targets in val_loader:
+            val_outputs = model(val_inputs).squeeze()
+            vl = criterion(val_outputs, val_targets) 
+            val_loss += vl.item() * val_inputs.size(0)          
+        val_loss /= len(val_loader.dataset)              
+        print(f"Epoch {epoch+1}/{num_epochs}")  
+        
+        # Check if validation loss has reached its minimum
+        early_stopping(val_loss, model)
+    
+    return val_loss
 
 # Set the matplotlib backend to 'Agg' for saving plots as files
-plt.switch_backend('Agg')
+plt.switch_backend("Agg")
 
-def train_model(model, train_loader, criterion, optimizer, num_epochs=10):
-    train_losses = []
+def train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=100):
+    stop = 0
+    tl_vector = []
+    vl_vector = []
+    idx = num_epochs
     
     for epoch in range(num_epochs):
         model.train()
-        running_loss = 0.0
+        train_loss = 0.0
         for inputs, targets in train_loader:
             optimizer.zero_grad()
             outputs = model(inputs).squeeze()  # Adjust outputs to match the shape of targets
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
-            running_loss += loss.item()
+            train_loss += loss.item() * inputs.size(0)
         
-        train_losses.append(running_loss)
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {running_loss}")
+        train_loss /= len(train_loader.dataset)
+        
+        val_loss = regul(val_loader, model, criterion, epoch, num_epochs, early_stopping)
+       
+        # Save training and validation loss in vectors
+        tl_vector.append(train_loss)   
+        vl_vector.append(val_loss)
+        
+        # Save best epoch number
+        if early_stopping.early_stop and stop == 0:
+            idx = epoch - early_stopping.patience
+            print(f"Early stopping at epoch {idx}\n Lowest loss: {-early_stopping.best_score}")
+            stop = 1
     
-    # Plot the training loss
+    # Load the best model
+    early_stopping.load_best_model(model)
+        
+    indices = range(1, num_epochs + 1) 
+        
+    # Plot training and validation loss
     plt.figure()
-    plt.plot(range(1, num_epochs + 1), train_losses, marker="o", label="Training Loss")
+    plt.plot(indices, tl_vector, marker="o", color="navy", label="Training", markersize=1)
+    plt.plot(indices, vl_vector, marker="o", color="darkorange", label="Validation", markersize=1)
+    plt.scatter(idx + 1, vl_vector[idx-100], marker="o", color="black", label="Early Stop", s=64)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("Training Loss Over Epochs")
+    plt.title("Loss Over Epochs")
     plt.legend()
-    plt.savefig("training_loss.pdf")  # Save the plot as a PNG file
-    plt.close()  # Close the figure to free up memory
+    plt.savefig("loss.pdf")  
+    plt.close() 
 
 def calculate_metrics(predictions, targets):
     tp = ((predictions == 1) & (targets == 1)).sum().item()
@@ -90,22 +157,43 @@ def calculate_metrics(predictions, targets):
     
     return accuracy, precision, recall, f1, np.array([[tp, fp], [fn, tn]])
 
-def calculate_roc_auc(targets, probabilities):
+def calculate_roc_auc_thr(targets, probabilities):
     thresholds = sorted(set(probabilities), reverse=True)
     tpr = []  # True positive rate
     fpr = []  # False positive rate
-    for thresh in thresholds:
-        predicted = (probabilities >= thresh).float()
-        tp = ((predicted == 1) & (targets == 1)).sum().item()
-        tn = ((predicted == 0) & (targets == 0)).sum().item()
-        fp = ((predicted == 1) & (targets == 0)).sum().item()
-        fn = ((predicted == 0) & (targets == 1)).sum().item()
-        tpr.append(tp / (tp + fn) if (tp + fn) > 0 else 0)
+    best_thr = 0.5
+    best_J = -1
+    best_point = None
+
+    for thr in thresholds:
+        predicted = (probabilities >= thr).float()
+        _, _, _, _, conf_matrix = calculate_metrics(predicted, targets)
+        
+        tp = conf_matrix[0, 0]
+        fp = conf_matrix[0, 1]
+        fn = conf_matrix[1, 0]
+        tn = conf_matrix[1, 1]
+        
+        # Calculate sensitivity and specificity
+        sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+        
+        tpr.append(sensitivity)
         fpr.append(fp / (fp + tn) if (fp + tn) > 0 else 0)
+        
+        # Calculate Youden's J statistic
+        J = sensitivity + specificity - 1
+
+        if J > best_J:
+            best_J = J
+            best_thr = thr
+            best_point = (fpr[-1], tpr[-1])
+
     tpr = np.array(tpr)
     fpr = np.array(fpr)
-    auc = np.trapz(tpr, fpr)  # AUC using the trapezoidal rule
-    return fpr, tpr, auc
+    auc = np.trapz(tpr, fpr)  # Calculate area under the curve based on the trapezoidal rule
+
+    return fpr, tpr, auc, best_thr, best_point
 
 def evaluate_model(model, test_loader):
     model.eval()
@@ -115,15 +203,18 @@ def evaluate_model(model, test_loader):
     with torch.no_grad():
         for inputs, labels in test_loader:
             outputs = model(inputs).squeeze()
-            predicted_labels = (outputs >= 0.5).float()  # Threshold at 0.5 for binary classification
-            predictions.extend(predicted_labels.cpu().numpy())
-            probabilities.extend(outputs.cpu().numpy())  # Save the probability for ROC curve
+            probabilities.extend(outputs.cpu().numpy())
             targets.extend(labels.cpu().numpy())
     
     # Convert lists to tensors
-    predictions = torch.tensor(predictions)
     targets = torch.tensor(targets)
     probabilities = torch.tensor(probabilities)
+    
+    # Compute ROC Curve and AUC
+    fpr, tpr, auc, best_thr, best_point = calculate_roc_auc_thr(targets, probabilities)
+    
+    # Use the best threshold for the predictions
+    predictions = (probabilities >= best_thr).float()
     
     # Compute metrics
     accuracy, precision, recall, f1, conf_matrix = calculate_metrics(predictions, targets)
@@ -131,18 +222,18 @@ def evaluate_model(model, test_loader):
     print(f"\nTest set accuracy: {accuracy:.4f}")
     print(f"Test set precision: {precision:.4f}")
     print(f"Test set recall: {recall:.4f}")
-    print(f"Test set F1 score: {f1:.4f}")
+    print(f"Test set F-score: {f1:.4f}")
+    print(f"Best threshold: {best_thr:.4f}")
     
     # Confusion Matrix
     print("\nConfusion Matrix:")
     print(conf_matrix)
     
-    # ROC Curve and AUC
-    fpr, tpr, roc_auc = calculate_roc_auc(targets, probabilities)
-    
+    # Plot ROC Curve
     plt.figure()
-    plt.plot(fpr, tpr, color="darkorange", lw=2, label=f"ROC Curve (A = {roc_auc:.2f})")
+    plt.plot(fpr, tpr, color="darkorange", lw=2, label=f"ROC Curve (AUC = {auc:.2f})")
     plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--", label="Random Classifier")
+    plt.scatter(best_point[0], best_point[1], color="black", label=f"Best Threshold")
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel("False Positive Rate")
@@ -152,9 +243,9 @@ def evaluate_model(model, test_loader):
     plt.savefig("roc_curve.pdf")
     plt.close()
     
-    return predictions, targets
+    return probabilities, targets, best_thr
 
-def plot_histograms(model, data_loader, labels):
+def plot_histogram(model, data_loader, labels, best_thr):
     model.eval()
     prob = []
     targets = []
@@ -177,11 +268,50 @@ def plot_histograms(model, data_loader, labels):
     background_predict = prob[targets == 0]
     plt.hist(background_predict, bins=40, density=True, alpha=0.5, label="Background (ED)", color="red", hatch="//", edgecolor="black", range=(0.0, 1.0))
         
+    plt.axvline(x=best_thr, color="black", lw=2, linestyle="--", label=f"Threshold = {best_thr:.2f}")
     plt.xlabel("Predicted Probability", fontsize=14, labelpad=15)
     plt.ylabel("Normalized Density", fontsize=14, labelpad=15) 
     plt.legend()
-    plt.savefig("histNN.pdf")  # Save the plot as a PDF file
+    plt.savefig("prob_distribution.pdf")  # Save the plot as a PDF file
     plt.close()
+    
+def scatter_plots(dada_loader, probabilities, targets):
+
+    # Convert probabilities to a numpy array
+    prob = np.array(probabilities)
+    targets = np.array(targets)
+    
+    # Split probabilities based on target labels
+    signal_predict = prob[targets == 1]
+    background_predict = prob[targets == 0]
+    
+    # Define feature columns
+    columns = ["kstTMass", "bCosAlphaBS", "bVtxCL", "bLBSs", "bDCABSs", "kstTrkpDCABSs", "kstTrkmDCABSs", "leadingPt", "trailingPt"]
+
+    for i in range(len(columns)):
+        variables = []
+        with torch.no_grad():
+            name = columns[i]
+
+            # Collect the feature values for the i-th column
+            for inputs, labels in dada_loader:
+                variables.extend(inputs[:, i].cpu().numpy())
+                   
+            variables = np.array(variables)
+           
+        # Split feature values based on target label
+        signal_variable = variables[targets == 1]
+        background_variable = variables[targets == 0]
+           
+        # Create scatter plot
+        plt.figure(figsize=(8, 6))
+        plt.scatter(background_variable, background_predict, marker='o', color='red', label="Background (ED)")  
+        plt.scatter(signal_variable, signal_predict, marker='o', color='blue', label="Signal (MC)")
+        plt.xlabel(name, fontsize=14, labelpad=15)
+        plt.ylabel("Predicted Probability", fontsize=14, labelpad=15) 
+        plt.legend()
+        plt.savefig(f"{name}_scatter_plot.pdf")  # Save the plot as a PDF file
+        plt.close()
         
 def main():
     try:
@@ -218,6 +348,7 @@ def main():
         # Create DataLoader for training and testing
         train_dataloader = DataLoader(train_set, batch_size=32, shuffle=True)
         test_dataloader = DataLoader(test_set, batch_size=64, shuffle=False)
+        val_dataloader = DataLoader(val_set, batch_size=32, shuffle=True)
 
         # Initialize the model
         input_size = x.shape[1]
@@ -228,17 +359,24 @@ def main():
         class_wght = torch.tensor([total_sampl / (2 * np.sum(y == 0)), total_sampl / (2 * np.sum(y == 1))], dtype=torch.float32)
 
         # Define loss function and optimizer
+        # criterion = nn.BCELoss()
         criterion = FocalLoss(alpha=class_wght[1])
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
+        # Early stopping (delta should be a positive quantity)
+        early_stopping = EarlyStopping(patience=100, delta=0)
+
         # Train the model
-        train_model(model, train_dataloader, criterion, optimizer, num_epochs=100)
+        train_model(model, early_stopping, train_dataloader, val_dataloader, criterion, optimizer, num_epochs=1500)
 
         # Evaluate on the test set
-        predictions, targets = evaluate_model(model, test_dataloader)
+        probabilities, targets, best_thr = evaluate_model(model, test_dataloader)
         
         # Plot the histograms of predicted probabilities
-        plot_histograms(model, test_dataloader, targets)
+        plot_histogram(model, test_dataloader, targets, best_thr)
+        
+        # Plot the predicted probability as a function of each variable
+        scatter_plots(test_dataloader, probabilities, targets)
         
     except Exception as e:
         print(f"An error occurred: {e}")
