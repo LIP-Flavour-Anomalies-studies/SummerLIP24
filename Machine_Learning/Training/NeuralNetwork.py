@@ -159,16 +159,17 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
     plt.plot(indices, tl_vector, marker="o", color="navy", label="Training", markersize=1)
     plt.plot(indices, vl_vector, marker="o", color="darkorange", label="Validation", markersize=1)
     plt.scatter(idx + 1, vl_vector[idx], marker="o", color="black", label="Early Stop", s=64)
-    plt.ylim(0, 1)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title("Loss Over Epochs")
     plt.legend()
     
     if flag == 0:
-        plt.savefig("B_loss.pdf") 
+        plt.savefig("B_loss.pdf")
+        plt.ylim(0, max(max(tl_vector), max(vl_vector))/1.5) 
     else:
         plt.savefig("F_loss.pdf")
+        plt.ylim(0, max(max(tl_vector), max(vl_vector))/4)
     plt.close() 
         
 def main():
@@ -215,8 +216,8 @@ def main():
         F_model = ClassificationModel(input_size)
 
         # Calculate class weights
-        total_sampl = len(y)
-        class_wght = torch.tensor([total_sampl / (2 * np.sum(y == 0)), total_sampl / (2 * np.sum(y == 1))], dtype=torch.float32)
+        class_wght = torch.tensor([1 / np.sum(y == 0), 1 / np.sum(y == 1)], dtype=torch.float32)
+        class_wght = class_wght / class_wght.sum()
 
         # Define loss function and optimizer
         B_criterion = BalancedLoss(alpha=class_wght)
@@ -226,8 +227,8 @@ def main():
         F_optimizer = optim.Adam(F_model.parameters(), lr=0.001)
 
         # Early stopping (delta should be a positive quantity)
-        B_early_stopping = EarlyStopping(patience=100, delta=1e-4)
-        F_early_stopping = EarlyStopping(patience=100, delta=1e-4)
+        B_early_stopping = EarlyStopping(patience=100, delta=1e-6)
+        F_early_stopping = EarlyStopping(patience=100, delta=1e-6)
 
         # Train the model
         print("\nTraining model with balanced cross-entropy loss...")
