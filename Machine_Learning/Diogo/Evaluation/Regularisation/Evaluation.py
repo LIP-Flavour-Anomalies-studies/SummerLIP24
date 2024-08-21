@@ -34,10 +34,16 @@ def load_model():
 
     # Create DataLoader for test data
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-
+    
+    lr = checkpoint['hyperparameters']["lr"]
+    n_layers = checkpoint['hyperparameters']["n_layers"]
+    n_units = [checkpoint['hyperparameters'][f"n_units_l{i}"] for i in range(best_n_layers)]
+    activation_functions = {'ReLU': nn.ReLU, 'Tanh': nn.Tanh, 'LeakyReLU': nn.LeakyReLU}
+    activation = activation_functions[checkpoint['hyperparameters']["activation_name"]]
+    
     # Recreate the model and load state dict
     input_size = test_dataset.dataset.X.shape[1]
-    model = ClassificationModel(input_size)
+    model = ClassificationModel(input_size, n_layers, n_units, activation)
     model.load_state_dict(checkpoint['model_state_dict'])
     
     return model, test_loader
