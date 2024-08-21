@@ -40,15 +40,25 @@ class ClassificationModel(nn.Module):
         return self.model(x)
 
 class FocalLoss(nn.Module):
-    def __init__(self, alpha=1, gamma=2):
+    def __init__(self, alpha=None, gamma=2):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
 
     def forward(self, inputs, targets):
-        BCE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction="none")
-        pt = torch.exp(-BCE_loss)
-        F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
+        # Calculate the standard binary cross-entropy loss without reduction
+        CE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction="none")
+        
+        # Calculate the probability of correct classification
+        pt = torch.exp(-CE_loss)
+        
+        if self.alpha is not None:
+            alpha_t = self.alpha[1] * targets + self.alpha[0] * (1 - targets)
+            F_loss = alpha_t * (1-pt)**self.gamma * CE_loss
+        else:
+            F_loss = (1-pt)**self.gamma * CE_loss
+        
+        # Return the mean of the focal loss
         return torch.mean(F_loss)
 
 class EarlyStopping:
@@ -96,7 +106,7 @@ def regul(val_loader, model, criterion, epoch, num_epochs, early_stopping):
 
 plt.switch_backend("Agg")
 
-def train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=100):
+def train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=1000):
     stop = 0
     tl_vector = []
     vl_vector = []
@@ -158,10 +168,10 @@ def objective(trial):
 
     total_sampl = len(y)
     class_wght = torch.tensor([total_sampl / (2 * np.sum(y == 0)), total_sampl / (2 * np.sum(y == 1))], dtype=torch.float32)
-    criterion = FocalLoss(alpha=class_wght[1])
+    criterion = FocalLoss(alpha=class_wght)
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    early_stopping = EarlyStopping(patience=200, delta=0)
+    early_stopping = EarlyStopping(patience=200, delta=1e-4)
 
     _, vl_vector, idx = train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=1000)
 
@@ -170,7 +180,7 @@ def objective(trial):
 def main():
     try:
         study = optuna.create_study(direction="minimize")
-        study.optimize(objective, n_trials=10)  # Number of trials can be adjusted
+        study.optimize(objective, n_trials=2)  # Number of trials can be adjusted
 
         print("Best trial:")
         trial = study.best_trial
@@ -208,10 +218,10 @@ def main():
 
         total_sampl = len(y)
         class_wght = torch.tensor([total_sampl / (2 * np.sum(y == 0)), total_sampl / (2 * np.sum(y == 1))], dtype=torch.float32)
-        criterion = FocalLoss(alpha=class_wght[1])
+        criterion = FocalLoss(alpha=class_wght)
         best_optimizer = optim.Adam(best_model.parameters(), lr=best_lr)
 
-        early_stopping = EarlyStopping(patience=200, delta=0)
+        early_stopping = EarlyStopping(patience=200, delta=1e-4)
 
         # Train the best model on the full training data and capture loss vectors
         tl_vector, vl_vector, idx = train_model(best_model, early_stopping, train_loader, val_loader, criterion, best_optimizer, num_epochs=1000)
@@ -232,7 +242,6 @@ def main():
 
         print(f"Best model saved to {checkpoint_path}")
 
-        """
         # Plot the best training and validation losses
         indices = range(1, len(tl_vector) + 1)
         plt.figure()
@@ -245,7 +254,6 @@ def main():
         plt.legend()
         plt.savefig("Optim_loss.pdf")
         plt.close()
-        """
 
     except Exception as e:
         print(f"An error occurred: {e}")
