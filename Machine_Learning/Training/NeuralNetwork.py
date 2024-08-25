@@ -28,22 +28,43 @@ class ClassificationModel(nn.Module):
         x = self.fc(x)
         x = self.sigmoid(x)  # Apply sigmoid to get output in [0, 1]
         return x
+ 
+class BalancedLoss(nn.Module):
+    def __init__(self, alpha=None):
+        super(BalancedLoss, self).__init__()
+        self.alpha = alpha  
+
+    def forward(self, inputs, targets):
+        # Calculate the standard binary cross-entropy loss without reduction
+        CE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction="none")
+
+        if self.alpha is not None:
+            alpha_t = self.alpha[1] * targets + self.alpha[0] * (1 - targets)
+            B_loss = alpha_t * CE_loss
+        else:
+            B_loss = CE_loss
+
+        # Return the mean of the balanced cross-entropy loss
+        return torch.mean(B_loss)
     
 class FocalLoss(nn.Module):
-    def __init__(self, alpha=1, gamma=2):
+    def __init__(self, alpha=None, gamma=2):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
 
     def forward(self, inputs, targets):
         # Calculate the standard binary cross-entropy loss without reduction
-        BCE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction="none")
+        CE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction="none")
         
         # Calculate the probability of correct classification
-        pt = torch.exp(-BCE_loss)
+        pt = torch.exp(-CE_loss)
         
-        # Apply the modulating factor (1-pt)^gamma to the loss
-        F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
+        if self.alpha is not None:
+            alpha_t = self.alpha[1] * targets + self.alpha[0] * (1 - targets)
+            F_loss = alpha_t * (1-pt)**self.gamma * CE_loss
+        else:
+            F_loss = (1-pt)**self.gamma * CE_loss
         
         # Return the mean of the focal loss
         return torch.mean(F_loss)
@@ -97,7 +118,7 @@ def regul(val_loader, model, criterion, epoch, num_epochs, early_stopping):
 # Set the matplotlib backend to 'Agg' for saving plots as files
 plt.switch_backend("Agg")
 
-def train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=100):
+def train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=1000, flag=0):
     stop = 0
     tl_vector = []
     vl_vector = []
@@ -142,7 +163,13 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
     plt.ylabel("Loss")
     plt.title("Loss Over Epochs")
     plt.legend()
-    plt.savefig("loss.pdf")  
+    
+    if flag == 0:
+        plt.savefig("B_loss.pdf")
+        plt.ylim(0, max(max(tl_vector), max(vl_vector))/1.5) 
+    else:
+        plt.savefig("F_loss.pdf")
+        plt.ylim(0, max(max(tl_vector), max(vl_vector))/4)
     plt.close() 
         
 def main():
@@ -184,37 +211,54 @@ def main():
 
         # Initialize the model
         input_size = x.shape[1]
-        model = ClassificationModel(input_size)
+        
+        B_model = ClassificationModel(input_size)
+        F_model = ClassificationModel(input_size)
 
         # Calculate class weights
-        total_sampl = len(y)
-        class_wght = torch.tensor([total_sampl / (2 * np.sum(y == 0)), total_sampl / (2 * np.sum(y == 1))], dtype=torch.float32)
+        class_wght = torch.tensor([1 / np.sum(y == 0), 1 / np.sum(y == 1)], dtype=torch.float32)
+        class_wght = class_wght / class_wght.sum()
 
         # Define loss function and optimizer
-        # criterion = nn.BCELoss()
-        criterion = FocalLoss(alpha=class_wght[1])
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        B_criterion = BalancedLoss(alpha=class_wght)
+        F_criterion = FocalLoss(alpha=class_wght)
+        
+        B_optimizer = optim.Adam(B_model.parameters(), lr=0.001)
+        F_optimizer = optim.Adam(F_model.parameters(), lr=0.001)
 
         # Early stopping (delta should be a positive quantity)
-        early_stopping = EarlyStopping(patience=100, delta=0)
+        B_early_stopping = EarlyStopping(patience=100, delta=1e-6)
+        F_early_stopping = EarlyStopping(patience=100, delta=1e-6)
 
         # Train the model
-        train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=1000)
+        print("\nTraining model with balanced cross-entropy loss...")
+        train_model(B_model, B_early_stopping, train_loader, val_loader, B_criterion, B_optimizer, num_epochs=1000, flag = 0)
+        print("\nTraining model with focal loss...")
+        train_model(F_model, F_early_stopping, train_loader, val_loader, F_criterion, F_optimizer, num_epochs=1000, flag = 1)
 
         # Define the directory and filename
         # checkpoint_dir = "/user/u/u24diogobpereira/LocalRep/Machine_Learning/Diogo/Evaluation/" #Diogo
         checkpoint_dir = "/user/u/u24gmarujo/SummerLIP24/Machine_Learning/Evaluation/" # Gonçalo
-        checkpoint_file = "model_checkpoint.pth"
-        checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
-
+        
+        B_checkpoint_file = "B_model_checkpoint.pth" 
+        F_checkpoint_file = "F_model_checkpoint.pth"
+        
+        B_checkpoint_path = os.path.join(checkpoint_dir, B_checkpoint_file)
+        F_checkpoint_path = os.path.join(checkpoint_dir, F_checkpoint_file)
+        
         # Create the directory if it doesn't exist
         os.makedirs(checkpoint_dir, exist_ok=True)
 
         # Save model, optimizer_state_dict, dataset and test_set
-        torch.save({"model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
+        torch.save({"model_state_dict": B_model.state_dict(),
+                    "optimizer_state_dict": B_optimizer.state_dict(),
                     "dataset": dataset,
-                    "test_set": test_set}, checkpoint_path)
+                    "test_set": test_set}, B_checkpoint_path)
+        
+        torch.save({"model_state_dict": F_model.state_dict(),
+                    "optimizer_state_dict": F_optimizer.state_dict(),
+                    "dataset": dataset,
+                    "test_set": test_set}, F_checkpoint_path)
         
     except Exception as e:
         print(f"An error occurred: {e}")
