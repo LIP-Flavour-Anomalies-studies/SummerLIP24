@@ -39,27 +39,23 @@ class ClassificationModel(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=None, gamma=2):
-        super(FocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
+class BalancedLoss(nn.Module):
+    def __init__(self, alpha=None):
+        super(BalancedLoss, self).__init__()
+        self.alpha = alpha  
 
     def forward(self, inputs, targets):
         # Calculate the standard binary cross-entropy loss without reduction
         CE_loss = nn.functional.binary_cross_entropy(inputs, targets, reduction="none")
-        
-        # Calculate the probability of correct classification
-        pt = torch.exp(-CE_loss)
-        
+
         if self.alpha is not None:
             alpha_t = self.alpha[1] * targets + self.alpha[0] * (1 - targets)
-            F_loss = alpha_t * (1-pt)**self.gamma * CE_loss
+            B_loss = alpha_t * CE_loss
         else:
-            F_loss = (1-pt)**self.gamma * CE_loss
-        
-        # Return the mean of the focal loss
-        return torch.mean(F_loss)
+            B_loss = CE_loss
+
+        # Return the mean of the balanced cross-entropy loss
+        return torch.mean(B_loss)
 
 class EarlyStopping:
     def __init__(self, patience, delta):
@@ -110,7 +106,7 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
     stop = 0
     tl_vector = []
     vl_vector = []
-    idx = num_epochs
+    idx = num_epochs - 1
 
     for epoch in range(num_epochs):
         model.train()
@@ -166,12 +162,14 @@ def objective(trial):
     input_size = x.shape[1]
     model = ClassificationModel(input_size, n_layers, n_units, activation)
 
-    total_sampl = len(y)
-    class_wght = torch.tensor([total_sampl / (2 * np.sum(y == 0)), total_sampl / (2 * np.sum(y == 1))], dtype=torch.float32)
-    criterion = FocalLoss(alpha=class_wght)
+    # Calculate class weights
+    class_wght = torch.tensor([1 / np.sum(y == 0), 1 / np.sum(y == 1)], dtype=torch.float32)
+    class_wght = class_wght / class_wght.sum()
+        
+    criterion = BalancedLoss(alpha=class_wght)
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    early_stopping = EarlyStopping(patience=200, delta=1e-4)
+    early_stopping = EarlyStopping(patience=200, delta=1e-6)
 
     _, vl_vector, idx = train_model(model, early_stopping, train_loader, val_loader, criterion, optimizer, num_epochs=1000)
 
@@ -180,7 +178,7 @@ def objective(trial):
 def main():
     try:
         study = optuna.create_study(direction="minimize")
-        study.optimize(objective, n_trials=2)  # Number of trials can be adjusted
+        study.optimize(objective, n_trials=50)  # Number of trials can be adjusted
 
         print("Best trial:")
         trial = study.best_trial
@@ -216,12 +214,14 @@ def main():
         input_size = x.shape[1]
         best_model = ClassificationModel(input_size, best_n_layers, best_n_units, best_activation)
 
-        total_sampl = len(y)
-        class_wght = torch.tensor([total_sampl / (2 * np.sum(y == 0)), total_sampl / (2 * np.sum(y == 1))], dtype=torch.float32)
-        criterion = FocalLoss(alpha=class_wght)
+        # Calculate class weights
+        class_wght = torch.tensor([1 / np.sum(y == 0), 1 / np.sum(y == 1)], dtype=torch.float32)
+        class_wght = class_wght / class_wght.sum()
+        
+        criterion = BalancedLoss(alpha=class_wght)
         best_optimizer = optim.Adam(best_model.parameters(), lr=best_lr)
 
-        early_stopping = EarlyStopping(patience=200, delta=1e-4)
+        early_stopping = EarlyStopping(patience=200, delta=1e-6)
 
         # Train the best model on the full training data and capture loss vectors
         tl_vector, vl_vector, idx = train_model(best_model, early_stopping, train_loader, val_loader, criterion, best_optimizer, num_epochs=1000)

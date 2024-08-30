@@ -11,7 +11,7 @@ import uproot3 as uproot
 import awkward0 as ak
 import numpy as np
 import os
-import prepdata as prep
+import prepdata_v1 as prep
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -165,10 +165,10 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
     plt.legend()
     
     if flag == 0:
-        plt.savefig("B_loss.pdf")
+        plt.savefig("B_loss_v1.pdf")
         plt.ylim(0, max(max(tl_vector), max(vl_vector))/1.5) 
     else:
-        plt.savefig("F_loss.pdf")
+        plt.savefig("F_loss_v1.pdf")
         plt.ylim(0, max(max(tl_vector), max(vl_vector))/4)
     plt.close() 
         
@@ -177,8 +177,8 @@ def main():
         # Input path
         #dir = "..." #Diogo
         dir = "/user/u/u24gmarujo/root_fl/" #Gonçalo
-        MC_file = "MC.root"
-        ED_file = "ED.root"
+        MC_file = "LargerMC.root"
+        ED_file = "LargerED.root"
         
         # Prepare data
         x, y = prep.prepdata(dir, MC_file, ED_file)
@@ -240,8 +240,8 @@ def main():
         # checkpoint_dir = "/user/u/u24diogobpereira/LocalRep/Machine_Learning/Diogo/Evaluation/" #Diogo
         checkpoint_dir = "/user/u/u24gmarujo/SummerLIP24/Machine_Learning/Evaluation/" # Gonçalo
         
-        B_checkpoint_file = "B_model_checkpoint.pth" 
-        F_checkpoint_file = "F_model_checkpoint.pth"
+        B_checkpoint_file = "B_model_checkpoint_v1.pth" 
+        F_checkpoint_file = "F_model_checkpoint_v1.pth"
         
         B_checkpoint_path = os.path.join(checkpoint_dir, B_checkpoint_file)
         F_checkpoint_path = os.path.join(checkpoint_dir, F_checkpoint_file)

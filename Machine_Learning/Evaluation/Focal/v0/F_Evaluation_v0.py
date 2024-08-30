@@ -20,11 +20,11 @@ import matplotlib.pyplot as plt
 # Add the directory containing NeuralNetwork.py to the Python path
 sys.path.append(os.path.abspath("/user/u/u24gmarujo/SummerLIP24/Machine_Learning/Training/"))
 
-from NeuralNetwork import ClassificationModel
+from NeuralNetwork_0 import ClassificationModel
 
 def load_model():
     # Load checkpoint
-    checkpoint = torch.load("B_model_checkpoint.pth")
+    checkpoint = torch.load("F_model_checkpoint_0.pth")
 
     # Load test dataset from checkpoint
     dataset = checkpoint["dataset"]
@@ -54,12 +54,12 @@ def calculate_metrics(predictions, targets):
     return accuracy, precision, recall, f1, np.array([[tp, fp], [fn, tn]])
 
 def save_metrics(conf_matrix, accuracy, precision, recall, f1, best_thr):
-    pdf_filename = "B_metrics.pdf"
+    pdf_filename = "F_metrics.pdf"
     c = canvas.Canvas(pdf_filename, pagesize=letter)
     width, height = letter
 
     # Title
-    c.setFont("Helvetica-Bold", 18)
+    c.setFont("Helvetica-Bold", 16)
     c.drawString(100, height - 50, "Evaluation Metrics")
 
     # Accuracy, Precision, Recall, F1-Score, Best Threshold
@@ -187,7 +187,7 @@ def evaluate_model(model, test_loader):
     plt.ylabel("True Positive Rate")
     plt.title("Receiver Operating Characteristic (ROC)")
     plt.legend(loc="lower right")
-    plt.savefig("B_roc_curve.pdf")
+    plt.savefig("F_roc_curve.pdf")
     plt.close()
     
     return probabilities, targets, best_thr
@@ -219,7 +219,7 @@ def plot_histogram(model, data_loader, labels, best_thr):
     plt.xlabel("Predicted Probability", fontsize=14, labelpad=15)
     plt.ylabel("Normalized Density", fontsize=14, labelpad=15) 
     plt.legend()
-    plt.savefig("B_prob_distribution.pdf")  # Save the plot as a PDF file
+    plt.savefig("F_prob_distribution.pdf")  # Save the plot as a PDF file
     plt.close()
     
 def scatter_plots(dada_loader, probabilities, targets):
@@ -257,7 +257,7 @@ def scatter_plots(dada_loader, probabilities, targets):
         plt.xlabel(name, fontsize=14, labelpad=15)
         plt.ylabel("Predicted Probability", fontsize=14, labelpad=15) 
         plt.legend()
-        plt.savefig(f"B_{name}_scatter_plot.pdf")  # Save the plot as a PDF file
+        plt.savefig(f"F_{name}_scatter_plot.pdf")  # Save the plot as a PDF file
         plt.close()
         
 def main():
