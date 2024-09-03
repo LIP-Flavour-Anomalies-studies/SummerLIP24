@@ -70,9 +70,10 @@ class FocalLoss(nn.Module):
         return torch.mean(F_loss)
     
 class EarlyStopping:
-    def __init__(self, patience, delta):
+    def __init__(self, patience, delta, stability):
         self.patience = patience  # Number of epochs to wait for improvement in validation loss, before stopping the training
         self.delta = delta  # Minimum change in validation loss that qualifies as an improvement
+        self.stability = stability
         self.best_score = None  # Best validation score encountered during training
         self.early_stop = False  # Boolean flag that indicates if training should be stopped early
         self.counter = 0  # Counts the number of epochs since the last improvement in validation loss
@@ -84,7 +85,7 @@ class EarlyStopping:
         if self.best_score is None:
             self.best_score = score
             self.best_model_state = model.state_dict()
-        elif score < self.best_score - self.delta:
+        elif score < self.best_score - self.delta and self.best_score - score < self.stability:
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
@@ -148,11 +149,12 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
             idx = epoch - early_stopping.patience
             print(f"Early stopping at epoch {idx}\n Lowest loss: {-early_stopping.best_score}")
             stop = 1
+            break
     
     # Load the best model
     early_stopping.load_best_model(model)
         
-    indices = range(1, num_epochs + 1) 
+    indices = range(1, len(tl_vector) + 1) 
         
     # Plot training and validation loss
     plt.figure()
@@ -169,7 +171,7 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
         plt.ylim(0, max(max(tl_vector), max(vl_vector))/1.5) 
     else:
         plt.savefig("F_loss_v1.pdf")
-        plt.ylim(0, max(max(tl_vector), max(vl_vector))/4)
+        plt.ylim(0, max(max(tl_vector), max(vl_vector))/6)
     plt.close() 
         
 def main():
@@ -227,8 +229,8 @@ def main():
         F_optimizer = optim.Adam(F_model.parameters(), lr=0.001)
 
         # Early stopping (delta should be a positive quantity)
-        B_early_stopping = EarlyStopping(patience=100, delta=1e-6)
-        F_early_stopping = EarlyStopping(patience=100, delta=1e-6)
+        B_early_stopping = EarlyStopping(patience=100, delta=1e-6, stability=1e-2)
+        F_early_stopping = EarlyStopping(patience=100, delta=1e-6, stability=1e-2)
 
         # Train the model
         print("\nTraining model with balanced cross-entropy loss...")
