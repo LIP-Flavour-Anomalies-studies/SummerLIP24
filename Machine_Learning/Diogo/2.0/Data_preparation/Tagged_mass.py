@@ -67,6 +67,7 @@ def fill_tree(tree, output_tree, Data):
         tree.GetEntry(i)
         
         # Retrieve variables of interest
+        eventN = getattr(tree, "eventN")
         bCosAlphaBS = getattr(tree, "bCosAlphaBS")
         bVtxCL = getattr(tree, "bVtxCL")
         bLBS = getattr(tree, "bLBS")
@@ -101,6 +102,7 @@ def fill_tree(tree, output_tree, Data):
                 
         variables["bCosAlphaBS"][0] = bCosAlphaBS
         variables["bVtxCL"][0] = bVtxCL
+        variables["eventN"][0] = eventN
             
         if bLBSE != 0:
             variables["bLBSs"][0] = bLBS / bLBSE
@@ -149,6 +151,7 @@ output_tree = TTree("mass_tree", "Tree with selected tagged Bmass.")
 
 # Variables to be stored in the TTrees
 variables = {
+    "eventN": np.zeros(1, dtype=float),
     "bCosAlphaBS": np.zeros(1, dtype=float),
     "bVtxCL": np.zeros(1, dtype=float),
     "bLBSs": np.zeros(1, dtype=float),

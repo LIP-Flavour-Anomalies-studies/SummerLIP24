@@ -81,80 +81,36 @@ def scatter_plots(test_loader, probabilities, targets, filename):
 
  
  
-def plot_hist(data1, data2, name, model_name):
+def plot_hist(data, name, model_name):
 
     ROOT.gROOT.SetBatch(True)
 
-    x_min = min(np.min(data1), np.min(data2))
-    x_max = max(np.max(data1), np.max(data2))
-    n_bins = 50
+    x_min = np.min(data)
+    x_max = np.max(data)
+    n_bins = 27
 
     # Create the histograms (n_bins, x_min, x_max)
-    hist1 = ROOT.TH1F("hist1", f"Signal {name}", n_bins, 5.0, 5.6)
-    hist2 = ROOT.TH1F("hist2", f"Background {name}", n_bins, 5.0, 5.6)
+    hist = ROOT.TH1F("hist", f"{name}", n_bins, 5.0, 5.6)
+    hist.SetMinimum(0)
 
     # Fill the histograms with data
-    for value in data1:
-        hist1.Fill(value)
-
-    for value in data2:
-        hist2.Fill(value)
-
-    if hist1.Integral() != 0:    
-        hist1.Scale(1./hist1.Integral())
- 
-    if hist2.Integral() != 0:
-        hist2.Scale(1./hist2.Integral())
+    for value in data:
+        hist.Fill(value)
 
     canvas = ROOT.TCanvas("canvas", "Canvas", 800, 600)
     
-    # Set line colors for histograms
-    hist1.SetLineColor(ROOT.kRed)
-    hist2.SetLineColor(ROOT.kBlue)
-    
     # Set titles for histograms
-    hist1.SetTitle(name)
+    hist.SetTitle(name)
     
     # Draw histograms on the main canvas
-    hist1.Draw("HIST")
-    hist2.Draw("HIST SAME")
-
-    hist1.SetStats(0)
-    hist2.SetStats(0)
-    
-    # Calculate statistics for hist1
-    entries1 = hist1.GetEntries()
-    mean1 = hist1.GetMean()
-    stddev1 = hist1.GetStdDev()
-    
-    # Calculate statistics for hist2
-    entries2 = hist2.GetEntries()
-    mean2 = hist2.GetMean()
-    stddev2 = hist2.GetStdDev()
-    
-    # Create custom statistics box
-    stats1 = ROOT.TPaveText(0.6, 0.8, 0.8, 0.9, "NDC")
-    stats1.SetBorderSize(1)
-    stats1.SetTextColor(ROOT.kRed)
-    stats1.AddText(f"Signal: Entries = {entries1:.0f}")
-    stats1.AddText(f"Mean = {mean1:.3f}")
-    stats1.AddText(f"Std Dev = {stddev1:.3f}")
-    stats1.Draw()
-    
-    stats2 = ROOT.TPaveText(0.8, 0.8, 1.0, 0.9, "NDC")
-    stats2.SetBorderSize(1)
-    stats2.SetTextColor(ROOT.kBlue)
-    stats2.AddText(f"Background: Entries = {entries2:.0f}")
-    stats2.AddText(f"Mean = {mean2:.3f}")
-    stats2.AddText(f"Std Dev = {stddev2:.3f}")
-    stats2.Draw()
-    
+    hist.Draw("HIST")
+ 
     # Create a legend and add entries with statistics
-    legend = ROOT.TLegend(0.8, 0.2, 1.0, 0.3)  # Adjusted to not overlap with stats boxes
-    legend.AddEntry(hist1, "Signal", "l")
-    legend.AddEntry(hist2, "Background", "l")
-    legend.Draw()
-    
+    legend = ROOT.TLegend(0.7, 0.2, 1.0, 0.4)  # Adjusted to not overlap with stats boxes
+    legend.AddEntry(hist, "Most signal likely", "l")
+    legend.AddEntry(None, "classified candidate", "")  
+    # legend.Draw()
+
     # Save the canvas to a file
     canvas.SaveAs(f"{model_name}_{name}_hist.pdf")
     canvas.Close()
