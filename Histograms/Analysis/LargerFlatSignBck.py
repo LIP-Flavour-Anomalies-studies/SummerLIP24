@@ -271,8 +271,8 @@ def plot_hist(hist1, hist2, file_name, title):
     
     # Create a legend and add entries with statistics
     legend = ROOT.TLegend(0.8, 0.4, 1.0, 0.5)  # Adjusted to not overlap with stats boxes
-    legend.AddEntry(hist1, "Monte Carlo", "l")
-    legend.AddEntry(hist2, "Data", "l")
+    legend.AddEntry(hist1, "Signal", "l")
+    legend.AddEntry(hist2, "Background", "l")
     legend.Draw()
     
     # Save the canvas to a file

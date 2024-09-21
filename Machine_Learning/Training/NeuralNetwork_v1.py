@@ -168,10 +168,10 @@ def train_model(model, early_stopping, train_loader, val_loader, criterion, opti
     
     if flag == 0:
         plt.savefig("B_loss_v1.pdf")
-        plt.ylim(0, max(max(tl_vector), max(vl_vector))/1.5) 
+        plt.ylim(0, max(max(tl_vector), max(vl_vector))/25) 
     else:
         plt.savefig("F_loss_v1.pdf")
-        plt.ylim(0, max(max(tl_vector), max(vl_vector))/6)
+        plt.ylim(0, max(max(tl_vector), max(vl_vector))/50)
     plt.close() 
         
 def main():
@@ -207,9 +207,9 @@ def main():
         print()
 
         # Create DataLoader for training and testing
-        train_loader = DataLoader(train_set, batch_size=32, shuffle=True)
-        test_loader = DataLoader(test_set, batch_size=64, shuffle=False)
-        val_loader = DataLoader(val_set, batch_size=32, shuffle=True)
+        train_loader = DataLoader(train_set, batch_size=1000, shuffle=True)
+        test_loader = DataLoader(test_set, batch_size=1000, shuffle=False)
+        val_loader = DataLoader(val_set, batch_size=1000, shuffle=True)
 
         # Initialize the model
         input_size = x.shape[1]
@@ -225,8 +225,8 @@ def main():
         B_criterion = BalancedLoss(alpha=class_wght)
         F_criterion = FocalLoss(alpha=class_wght)
         
-        B_optimizer = optim.Adam(B_model.parameters(), lr=0.001)
-        F_optimizer = optim.Adam(F_model.parameters(), lr=0.001)
+        B_optimizer = optim.Adam(B_model.parameters(), lr=1e-4)
+        F_optimizer = optim.Adam(F_model.parameters(), lr=1e-4)
 
         # Early stopping (delta should be a positive quantity)
         B_early_stopping = EarlyStopping(patience=100, delta=1e-6, stability=1e-2)
@@ -234,9 +234,9 @@ def main():
 
         # Train the model
         print("\nTraining model with balanced cross-entropy loss...")
-        train_model(B_model, B_early_stopping, train_loader, val_loader, B_criterion, B_optimizer, num_epochs=1000, flag = 0)
+        train_model(B_model, B_early_stopping, train_loader, val_loader, B_criterion, B_optimizer, num_epochs=2000, flag = 0)
         print("\nTraining model with focal loss...")
-        train_model(F_model, F_early_stopping, train_loader, val_loader, F_criterion, F_optimizer, num_epochs=1000, flag = 1)
+        train_model(F_model, F_early_stopping, train_loader, val_loader, F_criterion, F_optimizer, num_epochs=2000, flag = 1)
 
         # Define the directory and filename
         # checkpoint_dir = "/user/u/u24diogobpereira/LocalRep/Machine_Learning/Diogo/Evaluation/" #Diogo
