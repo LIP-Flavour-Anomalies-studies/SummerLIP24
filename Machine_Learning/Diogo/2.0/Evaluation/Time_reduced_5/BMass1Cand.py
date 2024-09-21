@@ -7,6 +7,7 @@ Gonçalo Marujo
 LIP Internship Program | Flavour Anomalies
 """
 
+from collections import defaultdict
 import torch
 import uproot
 import torch.nn as nn
@@ -71,15 +72,18 @@ def get_Bmasses():
     Tree = data["mass_tree"]
        
     columns = ["kstTMass", "bCosAlphaBS", "bVtxCL", "bLBSs", "bDCABSs", "kstTrkpDCABSs", "kstTrkmDCABSs", "leadingPt", "trailingPt"]
-    variab = ["bTMass"]
+    variab1 = ["bTMass"]
+    variab2 = ["eventN"]
 
     ins = Tree.arrays(columns, library="np")
     column_arrays = [ins[column] for column in columns]
     np_array = np.column_stack(column_arrays) 
     inputs = torch.tensor(np_array, dtype=torch.float32)
-    Bmasses = Tree.arrays(variab, library="np")[variab[0]]
+    
+    Bmasses = Tree.arrays(variab1, library="np")[variab1[0]]
+    eventN = Tree.arrays(variab2, library="np")[variab2[0]]
  
-    return inputs, Bmasses
+    return inputs, Bmasses, eventN
 
 
 
@@ -97,8 +101,9 @@ alpha_model, focal_model = load_model()
 alpha_model.eval()  # Set model to evaluation mode
 focal_model.eval()
 
-inputs, Bmasses = get_Bmasses()
-print(Bmasses.shape)
+inputs, Bmasses, eventN = get_Bmasses()
+print(f"Bmasses.shape: {Bmasses.shape}")
+print(f"eventN.shape: {eventN.shape}")
 
 models = {
     "alpha_model": alpha_model,
@@ -108,18 +113,30 @@ models = {
 for model_name, model in models.items(): 
     
     if model_name == "alpha_model":
-        best_thresh = 0.41443
+        best_thresh = 0.78768
     if model_name == "focal_model":
-        best_thresh = 0.51605
+        best_thresh = 0.47106
     
     outputs = model(inputs).squeeze()
     probabilities = torch.sigmoid(outputs)
     predictions = (probabilities >= best_thresh).float()
     predictions = np.array(predictions)
-    print(predictions.shape)    
+    print(f"predictions_{model_name}.shape: {predictions.shape}")    
   
-    Bmass_bck = Bmasses[predictions == 0]
     Bmass_sign = Bmasses[predictions == 1]
+    event_number = eventN[predictions == 1]
+    probabilities = probabilities.detach().numpy()
+    probabilities = probabilities[predictions == 1]
+    
+    # Create a dictionary to store the maximum probability and corresponding Bmass_sign for each eventN
+    max_prob_dict = defaultdict(lambda: (-np.inf, None))
+ 
+    for mass, evt, prob in zip(Bmass_sign, event_number, probabilities):
+        if prob > max_prob_dict[evt][0]:
+            max_prob_dict[evt] = (prob, mass)
 
-    p.plot_hist(Bmass_sign, Bmass_bck, "bTMass", model_name)
+    Bmass_sign_max_prob = np.array([mass for _, mass in max_prob_dict.values()])
+        
+
+    p.plot_hist(Bmass_sign_max_prob, "Tagged B0 mass", model_name)
 
